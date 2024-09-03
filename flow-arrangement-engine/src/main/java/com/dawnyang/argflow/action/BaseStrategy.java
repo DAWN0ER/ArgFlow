@@ -14,5 +14,6 @@ public abstract class BaseStrategy {
     protected ArrayList<StrategyNode> nodeArrangement;
 
     abstract public String[] getHandlerNameArrangement();
-    abstract public Map<String, Map<Integer,String>> getSwitchers();
+
+    abstract public Map<String, Map<Integer, String>> getSwitchers();
 }
