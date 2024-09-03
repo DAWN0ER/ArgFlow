@@ -1,4 +1,6 @@
-package domain.base;
+package com.dawnyang.argflow.domain.base;
+
+import com.dawnyang.argflow.action.FlowHandler;
 
 import java.util.HashMap;
 

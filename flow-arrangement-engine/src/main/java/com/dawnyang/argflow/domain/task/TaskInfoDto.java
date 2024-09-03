@@ -1,7 +1,7 @@
-package domain.task;
+package com.dawnyang.argflow.domain.task;
 
-import domain.base.BaseStatus;
-import domain.base.StatusResult;
+import com.dawnyang.argflow.domain.base.BaseStatus;
+import com.dawnyang.argflow.domain.base.StatusResult;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -16,4 +16,5 @@ public class TaskInfoDto {
     private String strategyName;
     private Map<String, StatusResult> outputRecord;
     private Integer currentNode;
+
 }

@@ -1,4 +1,6 @@
-package domain.base;
+package com.dawnyang.argflow.action;
+
+import com.dawnyang.argflow.domain.base.StatusResult;
 
 import java.util.Set;
 

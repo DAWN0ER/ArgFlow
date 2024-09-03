@@ -1,5 +1,6 @@
-package domain.base;
+package com.dawnyang.argflow.action;
 
+import com.dawnyang.argflow.domain.base.StrategyNode;
 import lombok.Getter;
 import lombok.Setter;
 
