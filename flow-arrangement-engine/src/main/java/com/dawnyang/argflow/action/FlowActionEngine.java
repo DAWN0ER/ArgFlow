@@ -5,6 +5,7 @@ import com.dawnyang.argflow.domain.exception.LoopArrangementException;
 import com.dawnyang.argflow.domain.exception.NoHandlerException;
 import com.dawnyang.argflow.domain.exception.WrongStrategyException;
 import com.dawnyang.argflow.utils.StrategyNodesBuilder;
+import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -13,6 +14,13 @@ import org.springframework.context.ApplicationContextAware;
 
 import java.util.*;
 
+/**
+ * Created with IntelliJ IDEA.
+ *
+ * @Description:
+ * @Auther: Dawn Yang
+ * @Since: 2024/09/03/20:26
+ */
 @Slf4j
 public class FlowActionEngine implements InitializingBean, ApplicationContextAware {
 
@@ -62,5 +70,15 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
                     .build();
         }
         strategy.setNodeArrangement(nodeList);
+    }
+
+    public void tell(String name){
+        BaseStrategy baseStrategy = strategyMap.get(name);
+        if(Objects.isNull(baseStrategy)){
+            return;
+        }
+        ArrayList<StrategyNode> nodeArrangement = baseStrategy.getNodeArrangement();
+        String json = new Gson().toJson(nodeArrangement);
+        log.info("Strategy details:{}",json);
     }
 }

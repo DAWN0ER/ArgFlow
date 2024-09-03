@@ -3,6 +3,13 @@ package com.dawnyang.argflow.utils;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Created with IntelliJ IDEA.
+ *
+ * @Description:
+ * @Auther: Dawn Yang
+ * @Since: 2024/09/03/20:26
+ */
 public class SwitcherBuilder {
 
     private final Map<String, Map<Integer, String>> nameSwitcher;

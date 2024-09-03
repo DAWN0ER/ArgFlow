@@ -6,6 +6,13 @@ import lombok.Getter;
 
 import java.util.HashMap;
 
+/**
+ * Created with IntelliJ IDEA.
+ *
+ * @Description:
+ * @Auther: Dawn Yang
+ * @Since: 2024/09/03/20:26
+ */
 @Getter
 @AllArgsConstructor
 public class StrategyNode {
