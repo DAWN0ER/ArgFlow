@@ -8,12 +8,20 @@ import org.springframework.stereotype.Service;
 import java.util.Objects;
 import java.util.Set;
 
+/**
+ * Created with IntelliJ IDEA.
+ *
+ * @Description:
+ * @Auther: Dawn Yang
+ * @Since: 2024/09/03/22:55
+ */
 @Service
-public class MyHandler2 implements FlowHandler<String,String> {
+public class MyHandler3 implements FlowHandler<String,String> {
+
     @Override
     public StatusResult<String> handler(String s) {
         String k = Objects.isNull(s) ? "" : s;
-        return new StatusResult<>(BaseStatus.SUCCESS.getStatus(),k+"-myHandler2");
+        return new StatusResult<>(BaseStatus.SUCCESS.getStatus(),k+"-myHandler333");
     }
 
     @Override

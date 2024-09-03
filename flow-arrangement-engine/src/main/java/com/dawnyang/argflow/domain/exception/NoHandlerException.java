@@ -7,7 +7,7 @@ package com.dawnyang.argflow.domain.exception;
  * @Auther: Dawn Yang
  * @Since: 2024/09/03/20:26
  */
-public class NoHandlerException extends RuntimeException {
+public class NoHandlerException extends StrategyException {
 
     private static final String FOR_ONE = "Handler bean: \"%s\" not Found, please check if the name is correct or the bean init successfully";
     private static final String FOR_ALL = "Not Found any Handler, please check if the name is correct or the bean init successfully";

@@ -4,21 +4,33 @@ import com.dawnyang.argflow.action.FlowHandler;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
+import java.util.Arrays;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
-public class MyHandler1 implements FlowHandler<String,String> {
+public class MyHandler1 implements FlowHandler<String, String> {
     @Override
     public StatusResult<String> handler(String s) {
-        return null;
+        String k = Objects.isNull(s) ? "" : s;
+        return new StatusResult<>(Status.CUS.code, k+"-myHandler1");
     }
 
     @Override
     public Set<Integer> customStatus() {
-        HashSet<Integer> status = new HashSet<>();
-        status.add(4);
-        status.add(9);
-        return status;
+        return Arrays.stream(Status.values()).map(e->e.code).collect(Collectors.toSet());
+    }
+
+    public enum Status{
+        CUS(4),
+        COS(9)
+        ;
+
+        public final int code;
+
+        Status(int code){
+            this.code = code;
+        }
     }
 }

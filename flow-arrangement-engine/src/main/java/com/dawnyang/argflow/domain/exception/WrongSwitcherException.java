@@ -7,7 +7,7 @@ package com.dawnyang.argflow.domain.exception;
  * @Auther: Dawn Yang
  * @Since: 2024/09/03/20:26
  */
-public class WrongSwitcherException extends RuntimeException {
+public class WrongSwitcherException extends StrategyException {
 
     private static final String LOOP_F = "Handler \"%s\"'s target handler:\"%s\"'s arrangement sequence is before it.";
     private static final String WRONG_STATUS_F = "Some key not found in handler:\"%s\" support status set";
@@ -29,6 +29,5 @@ public class WrongSwitcherException extends RuntimeException {
     public enum WrongType{
         LOOP,
         WRONG_STATUS
-        ;
     }
 }

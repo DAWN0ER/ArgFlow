@@ -3,6 +3,7 @@ package com.dawnyang.argflow.utils;
 import com.dawnyang.argflow.action.FlowHandler;
 import com.dawnyang.argflow.domain.base.BaseStatus;
 import com.dawnyang.argflow.domain.base.StrategyNode;
+import com.dawnyang.argflow.domain.exception.StrategyException;
 import com.dawnyang.argflow.domain.exception.WrongSwitcherException;
 import com.dawnyang.argflow.domain.exception.NoHandlerException;
 import org.apache.commons.collections.MapUtils;
@@ -25,7 +26,7 @@ public class StrategyNodesBuilder {
         return new StrategyNodesBuilder();
     }
 
-    public StrategyNodesBuilder sequenceHandler(String[] names, Map<String, FlowHandler> name2handler) throws NoHandlerException {
+    public StrategyNodesBuilder sequenceHandler(String[] names, Map<String, FlowHandler> name2handler) throws StrategyException {
         ArrayList<StrategyNode> tmpList = new ArrayList<>();
         Map<String, Integer> tmpMap = new HashMap<>();
         for (int order = 0; order < names.length; order++) {
@@ -43,7 +44,7 @@ public class StrategyNodesBuilder {
         return this;
     }
 
-    public StrategyNodesBuilder initSwitchers(Map<String, Map<Integer, String>> nameSwitchers) throws NoHandlerException, WrongSwitcherException {
+    public StrategyNodesBuilder initSwitchers(Map<String, Map<Integer, String>> nameSwitchers) throws StrategyException {
         if (MapUtils.isEmpty(nameSwitchers)) {
             return this;
         }

@@ -1,9 +1,12 @@
 package com.dawnyang.argflow.action;
 
+import com.dawnyang.argflow.domain.base.BaseStatus;
+import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.base.StrategyNode;
 import com.dawnyang.argflow.domain.exception.NoHandlerException;
+import com.dawnyang.argflow.domain.exception.StrategyException;
 import com.dawnyang.argflow.domain.exception.WrongStrategyException;
-import com.dawnyang.argflow.domain.exception.WrongSwitcherException;
+import com.dawnyang.argflow.domain.task.TaskInfoDto;
 import com.dawnyang.argflow.utils.StrategyNodesBuilder;
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +31,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
     private ApplicationContext springContext;
     private Map<String, BaseStrategy> strategyMap;
 
-    public void setApplicationContext(ApplicationContext applicationContext) throws NoHandlerException {
+    public void setApplicationContext(ApplicationContext applicationContext) {
         this.springContext = applicationContext;
     }
 
@@ -49,13 +52,13 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             try {
                 initStrategy(handlerBeans, strategy);
                 this.strategyMap.put(name, strategy);
-            } catch (NoHandlerException | WrongSwitcherException e) {
+            } catch (StrategyException e) {
                 new WrongStrategyException(name, e).printStackTrace();
             }
         });
     }
 
-    private void initStrategy(Map<String, FlowHandler> handlerBeans, BaseStrategy strategy) throws NoHandlerException, WrongSwitcherException {
+    private void initStrategy(Map<String, FlowHandler> handlerBeans, BaseStrategy strategy) throws StrategyException {
         String[] nameArrangement = strategy.handlerNameArrangement();
         Map<String, Map<Integer, String>> switchers = strategy.getSwitchers();
         boolean isSequential = MapUtils.isEmpty(switchers);
@@ -73,9 +76,9 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         strategy.setNodeArrangement(nodeList);
     }
 
-    public void tell(String name){
+    public void tell(String name) {
         BaseStrategy baseStrategy = strategyMap.get(name);
-        if(Objects.isNull(baseStrategy)){
+        if (Objects.isNull(baseStrategy)) {
             return;
         }
         ArrayList<StrategyNode> nodeArrangement = baseStrategy.getNodeArrangement();
@@ -86,5 +89,39 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
                 instanceList,
                 new Gson().toJson(nodeArrangement)
         );
+    }
+
+    public StatusResult execute(String strategyName, Object input) {
+        BaseStrategy strategy = strategyMap.get(strategyName);
+        if (Objects.isNull(strategy)) {
+            // TODO 抛异常
+        }
+        TaskInfoDto taskInfo = new TaskInfoDto(strategyName);
+        ArrayList<StrategyNode> nodes = strategy.getNodeArrangement();
+
+        int order = 0;
+        while(order < nodes.size()) {
+            taskInfo.setCurrentNode(order);
+            StrategyNode strategyNode = nodes.get(order);
+
+            StatusResult result = strategyNode.getHandler().handler(input);
+            if(BaseStatus.EXCEPTION.getStatus().equals(result.getStatus())){
+                // TODO 报错
+            }
+            if(BaseStatus.FAIL.getStatus().equals(result.getStatus())){
+                // TODO
+            }
+            taskInfo.getResultMap().put(strategyNode.getName(),result);
+            HashMap<Integer, Integer> switcher = strategyNode.getSwitcher();
+            if(MapUtils.isNotEmpty(switcher)){
+                Integer next = switcher.get(result.getStatus());
+                if(Objects.nonNull(next)){
+                    order = next;
+                    continue;
+                }
+            }
+            order++;
+        }
+        return new StatusResult<>(BaseStatus.SUCCESS.getStatus(), strategy.integrateResult(taskInfo.getResultMap()));
     }
 }

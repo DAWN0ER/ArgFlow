@@ -1,5 +1,6 @@
 package com.dawnyang.argflow.action;
 
+import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.base.StrategyNode;
 import lombok.Getter;
 import lombok.Setter;
@@ -23,4 +24,6 @@ public abstract class BaseStrategy {
     abstract public String[] handlerNameArrangement();
 
     abstract public Map<String, Map<Integer, String>> getSwitchers();
+
+    abstract public Object integrateResult(Map<String, StatusResult> resultMap);
 }
