@@ -15,6 +15,6 @@ public interface FlowHandler<INPUT, OUTPUT> {
 
     StatusResult<OUTPUT> handler(INPUT input);
 
-    Set<Integer> supportCustomStatus();
+    Set<Integer> customStatus();
 
 }

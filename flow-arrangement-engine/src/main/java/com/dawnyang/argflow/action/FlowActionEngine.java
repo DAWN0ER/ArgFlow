@@ -1,9 +1,9 @@
 package com.dawnyang.argflow.action;
 
 import com.dawnyang.argflow.domain.base.StrategyNode;
-import com.dawnyang.argflow.domain.exception.LoopArrangementException;
 import com.dawnyang.argflow.domain.exception.NoHandlerException;
 import com.dawnyang.argflow.domain.exception.WrongStrategyException;
+import com.dawnyang.argflow.domain.exception.WrongSwitcherException;
 import com.dawnyang.argflow.utils.StrategyNodesBuilder;
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +13,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created with IntelliJ IDEA.
@@ -48,14 +49,14 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             try {
                 initStrategy(handlerBeans, strategy);
                 this.strategyMap.put(name, strategy);
-            } catch (NoHandlerException | LoopArrangementException e) {
+            } catch (NoHandlerException | WrongSwitcherException e) {
                 new WrongStrategyException(name, e).printStackTrace();
             }
         });
     }
 
-    private void initStrategy(Map<String, FlowHandler> handlerBeans, BaseStrategy strategy) throws NoHandlerException, LoopArrangementException {
-        String[] nameArrangement = strategy.getHandlerNameArrangement();
+    private void initStrategy(Map<String, FlowHandler> handlerBeans, BaseStrategy strategy) throws NoHandlerException, WrongSwitcherException {
+        String[] nameArrangement = strategy.handlerNameArrangement();
         Map<String, Map<Integer, String>> switchers = strategy.getSwitchers();
         boolean isSequential = MapUtils.isEmpty(switchers);
         ArrayList<StrategyNode> nodeList;
@@ -78,7 +79,12 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             return;
         }
         ArrayList<StrategyNode> nodeArrangement = baseStrategy.getNodeArrangement();
-        String json = new Gson().toJson(nodeArrangement);
-        log.info("Strategy details:{}",json);
+        List<String> instanceList = nodeArrangement.stream().map(e -> e.getHandler().toString()).collect(Collectors.toList());
+        log.info("Strategy details:\nhandlersNames={},\nswitchers={},\nhandlerInstance={},\nNodeJson={}",
+                baseStrategy.handlerNameArrangement(),
+                baseStrategy.getSwitchers(),
+                instanceList,
+                new Gson().toJson(nodeArrangement)
+        );
     }
 }
