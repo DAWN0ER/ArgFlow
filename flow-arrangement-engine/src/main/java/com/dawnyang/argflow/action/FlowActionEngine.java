@@ -14,6 +14,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -49,16 +50,15 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         // 初始化 Cache
         this.lruCache = new LRUCache(cacheCapacity);
         // 初始化所有策略
-        Map<String,BaseStrategy> tmpMap = new HashMap<>();
+        this.strategyMap = new ConcurrentHashMap<>();
         strategyBeanMap.forEach((name, strategy) -> {
             try {
                 initStrategy(handlerBeans, strategy);
-                tmpMap.put(name, strategy);
+                this.strategyMap.put(name, strategy);
             } catch (StrategyException e) {
                 new WrongStrategyException(name, e).printStackTrace();
             }
         });
-        this.strategyMap = Collections.synchronizedMap(tmpMap);
     }
 
     private void initStrategy(Map<String, FlowHandler> handlerBeans, BaseStrategy strategy) throws StrategyException {
