@@ -2,7 +2,7 @@ package com.dawnyang.argflow.domain.task;
 
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.utils.MistUidGenerator;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.HashMap;
@@ -15,7 +15,7 @@ import java.util.Map;
  * @Auther: Dawn Yang
  * @Since: 2024/09/03/20:26
  */
-@Getter
+@Data
 @NoArgsConstructor
 public class TaskInfoDto {
 

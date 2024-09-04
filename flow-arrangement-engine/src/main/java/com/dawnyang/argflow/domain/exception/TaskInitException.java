@@ -9,4 +9,7 @@ package com.dawnyang.argflow.domain.exception;
  */
 public class TaskInitException extends TaskException{
 
+    public TaskInitException(String msg){
+        super(msg);
+    }
 }

@@ -3,9 +3,7 @@ package com.dawnyang.argflow.action;
 import com.dawnyang.argflow.domain.base.BaseStatus;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.base.StrategyNode;
-import com.dawnyang.argflow.domain.exception.NoHandlerException;
-import com.dawnyang.argflow.domain.exception.StrategyException;
-import com.dawnyang.argflow.domain.exception.WrongStrategyException;
+import com.dawnyang.argflow.domain.exception.*;
 import com.dawnyang.argflow.domain.task.TaskInfoDto;
 import com.dawnyang.argflow.utils.StrategyNodesBuilder;
 import com.google.gson.Gson;
@@ -28,6 +26,8 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FlowActionEngine implements InitializingBean, ApplicationContextAware {
 
+    private int cacheCapacity = 100;
+    private LRUCache lruCache;
     private ApplicationContext springContext;
     private Map<String, BaseStrategy> strategyMap;
 
@@ -46,16 +46,19 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             this.strategyMap = Collections.emptyMap();
             return;
         }
+        // 初始化 Cache
+        this.lruCache = new LRUCache(cacheCapacity);
         // 初始化所有策略
-        this.strategyMap = new HashMap<>();
+        Map<String,BaseStrategy> tmpMap = new HashMap<>();
         strategyBeanMap.forEach((name, strategy) -> {
             try {
                 initStrategy(handlerBeans, strategy);
-                this.strategyMap.put(name, strategy);
+                tmpMap.put(name, strategy);
             } catch (StrategyException e) {
                 new WrongStrategyException(name, e).printStackTrace();
             }
         });
+        this.strategyMap = Collections.synchronizedMap(tmpMap);
     }
 
     private void initStrategy(Map<String, FlowHandler> handlerBeans, BaseStrategy strategy) throws StrategyException {
@@ -91,14 +94,15 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         );
     }
 
-    public StatusResult execute(String strategyName, Object input) {
+    public StatusResult execute(String strategyName, Object input) throws TaskException{
         BaseStrategy strategy = strategyMap.get(strategyName);
         if (Objects.isNull(strategy)) {
-            // TODO 抛异常
+            throw new TaskInitException("Not found strategy bean id = \"" + strategyName + "\"");
         }
         TaskInfoDto taskInfo = new TaskInfoDto(strategyName);
-        ArrayList<StrategyNode> nodes = strategy.getNodeArrangement();
+        recordTask(taskInfo,strategy);
 
+        ArrayList<StrategyNode> nodes = strategy.getNodeArrangement();
         int order = 0;
         while(order < nodes.size()) {
             taskInfo.setCurrentNode(order);
@@ -106,10 +110,13 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
 
             StatusResult result = strategyNode.getHandler().handler(input);
             if(BaseStatus.EXCEPTION.getStatus().equals(result.getStatus())){
-                // TODO 报错
+                // TODO 抛异常
             }
             if(BaseStatus.FAIL.getStatus().equals(result.getStatus())){
-                // TODO
+                // TODO 直接结束，返回TaskInfo ？
+            }
+            if(BaseStatus.WAIT.getStatus().equals(result.getStatus())){
+                // TODO 返回TaskInfo ？
             }
             taskInfo.getResultMap().put(strategyNode.getName(),result);
             HashMap<Integer, Integer> switcher = strategyNode.getSwitcher();
@@ -123,5 +130,20 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             order++;
         }
         return new StatusResult<>(BaseStatus.SUCCESS.getStatus(), strategy.integrateResult(taskInfo.getResultMap()));
+    }
+
+    public void initCacheCapacity(int capacity){
+        if(MapUtils.isEmpty(lruCache)) {
+            this.cacheCapacity = capacity;
+        }
+    }
+
+    private void recordTask(TaskInfoDto taskInfo, BaseStrategy strategy) throws TaskRecordException{
+        lruCache.record(taskInfo);
+        if(strategy instanceof TaskDurable){
+            if(!((TaskDurable) strategy).recordTaskInfo(taskInfo)) {
+               throw new TaskRecordException(taskInfo.getTaskId(),taskInfo.getStrategyName());
+            }
+        }
     }
 }
