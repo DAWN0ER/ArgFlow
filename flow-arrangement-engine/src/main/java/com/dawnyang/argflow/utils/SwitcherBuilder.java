@@ -1,5 +1,7 @@
 package com.dawnyang.argflow.utils;
 
+import com.dawnyang.argflow.domain.base.NameSwitchers;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,27 +14,25 @@ import java.util.Map;
  */
 public class SwitcherBuilder {
 
-    private final Map<String, Map<Integer, String>> nameSwitcher;
-
-    public SwitcherBuilder() {
-        this.nameSwitcher = new HashMap<>();
-    }
+    private final Map<String, Map<Integer, String>> nameMap = new HashMap<>();
 
     public static SwitcherBuilder newBuilder() {
         return new SwitcherBuilder();
     }
 
-    public Map<String, Map<Integer, String>> build() {
-        return nameSwitcher;
+    public NameSwitchers build() {
+        NameSwitchers nameSwitchers = new NameSwitchers();
+        nameSwitchers.setNameMap(nameMap);
+        return nameSwitchers;
     }
 
     public SwitcherBuilder addSwitcher(String name, int status, String target) {
-        if (nameSwitcher.containsKey(name)) {
-            nameSwitcher.get(name).put(status, target);
+        if (nameMap.containsKey(name)) {
+            nameMap.get(name).put(status, target);
         } else {
             HashMap<Integer, String> tmpMap = new HashMap<>();
             tmpMap.put(status, target);
-            nameSwitcher.put(name, tmpMap);
+            nameMap.put(name, tmpMap);
         }
         return this;
     }

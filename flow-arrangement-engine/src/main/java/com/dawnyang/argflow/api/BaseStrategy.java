@@ -1,5 +1,6 @@
-package com.dawnyang.argflow.action;
+package com.dawnyang.argflow.api;
 
+import com.dawnyang.argflow.domain.base.NameSwitchers;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.base.StrategyNode;
 import lombok.Getter;
@@ -23,7 +24,7 @@ public abstract class BaseStrategy {
 
     abstract public String[] handlerNameArrangement();
 
-    abstract public Map<String, Map<Integer, String>> getSwitchers();
+    abstract public NameSwitchers getSwitchers();
 
-    abstract public Object integrateResult(Map<String, StatusResult> resultMap);
+    abstract public Object integrateResult(Map<String, StatusResult> resultMap, String endHandler);
 }

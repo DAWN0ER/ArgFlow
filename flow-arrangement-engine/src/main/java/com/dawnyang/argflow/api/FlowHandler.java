@@ -1,4 +1,4 @@
-package com.dawnyang.argflow.action;
+package com.dawnyang.argflow.api;
 
 import com.dawnyang.argflow.domain.base.StatusResult;
 

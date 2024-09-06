@@ -1,6 +1,6 @@
 package com.example.springexample.example.handler;
 
-import com.dawnyang.argflow.action.FlowHandler;
+import com.dawnyang.argflow.api.FlowHandler;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import org.springframework.stereotype.Service;
 

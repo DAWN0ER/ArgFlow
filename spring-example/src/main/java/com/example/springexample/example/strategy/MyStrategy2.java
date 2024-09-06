@@ -1,32 +1,40 @@
 package com.example.springexample.example.strategy;
 
 import com.dawnyang.argflow.api.BaseStrategy;
+import com.dawnyang.argflow.api.TaskDurable;
 import com.dawnyang.argflow.domain.base.NameSwitchers;
+import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
 import com.dawnyang.argflow.domain.base.StatusResult;
+import com.dawnyang.argflow.domain.task.TaskInfoDto;
 import com.dawnyang.argflow.utils.SwitcherBuilder;
 import com.example.springexample.example.handler.MyHandler1;
+import com.google.gson.Gson;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
+/**
+ * Created with IntelliJ IDEA.
+ *
+ * @Description:
+ * @Auther: Dawn Yang
+ * @Since: 2024/09/06/18:06
+ */
 @Service
-public class MyStrategy1 extends BaseStrategy {
-
+public class MyStrategy2 extends BaseStrategy implements TaskDurable {
     @Override
     public String[] handlerNameArrangement() {
         return new String[]{
                 "myHandler1",
-                "myHandler2",
-                "myHandler3"
+                "myHandler3",
+                "myHandler2"
         };
     }
 
     @Override
     public NameSwitchers getSwitchers() {
         return SwitcherBuilder.newBuilder()
+                .addSwitcher("myHandler1", BaseHandlerStatusEnum.FAIL.getStatus(), "END_FLOW")
                 .addSwitcher("myHandler1", MyHandler1.Status.CUS.code, "myHandler3")
                 .addSwitcher("myHandler1",MyHandler1.Status.COS.code, "myHandler2")
                 .build();
@@ -34,15 +42,17 @@ public class MyStrategy1 extends BaseStrategy {
 
     @Override
     public Object integrateResult(Map<String, StatusResult> resultMap, String endHandler) {
-        String[] order = handlerNameArrangement();
-        List<String> arrayList = new ArrayList<>();
-        for (String s : order) {
-            if(Objects.isNull(resultMap.get(s))){
-                continue;
-            }
-            String data = (String) resultMap.get(s).getData();
-            arrayList.add(data);
-        }
-        return arrayList;
+        return null;
+    }
+
+    @Override
+    public boolean recordTaskInfo(TaskInfoDto taskInfo) {
+        System.out.println("recordTaskInfo!:"+new Gson().toJson(taskInfo));
+        return true;
+    }
+
+    @Override
+    public TaskInfoDto getTaskInfo(Long taskId) {
+        return null;
     }
 }

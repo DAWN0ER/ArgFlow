@@ -1,6 +1,7 @@
 package com.dawnyang.argflow.domain.task;
 
 import com.dawnyang.argflow.domain.base.StatusResult;
+import com.dawnyang.argflow.domain.enums.TaskStatusEnum;
 import com.dawnyang.argflow.utils.MistUidGenerator;
 import lombok.Data;
 import lombok.NoArgsConstructor;

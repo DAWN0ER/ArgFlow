@@ -1,7 +1,8 @@
 package com.dawnyang.argflow.utils;
 
-import com.dawnyang.argflow.action.FlowHandler;
-import com.dawnyang.argflow.domain.base.BaseStatus;
+import com.dawnyang.argflow.api.FlowHandler;
+import com.dawnyang.argflow.domain.base.NameSwitchers;
+import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
 import com.dawnyang.argflow.domain.base.StrategyNode;
 import com.dawnyang.argflow.domain.exception.StrategyException;
 import com.dawnyang.argflow.domain.exception.strategy.WrongSwitcherException;
@@ -9,6 +10,7 @@ import com.dawnyang.argflow.domain.exception.strategy.NoHandlerException;
 import org.apache.commons.collections.MapUtils;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created with IntelliJ IDEA.
@@ -17,16 +19,16 @@ import java.util.*;
  * @Auther: Dawn Yang
  * @Since: 2024/09/03/20:26
  */
-public class StrategyNodesBuilder {
+public class StrategyArrangementBuilder {
 
     private ArrayList<StrategyNode> nodes;
     private Map<String, Integer> node2order;
 
-    public static StrategyNodesBuilder newBuilder() {
-        return new StrategyNodesBuilder();
+    public static StrategyArrangementBuilder newBuilder() {
+        return new StrategyArrangementBuilder();
     }
 
-    public StrategyNodesBuilder sequenceHandler(String[] names, Map<String, FlowHandler> name2handler) throws StrategyException {
+    public StrategyArrangementBuilder sequenceHandler(String[] names, Map<String, FlowHandler> name2handler) throws StrategyException {
         ArrayList<StrategyNode> tmpList = new ArrayList<>();
         Map<String, Integer> tmpMap = new HashMap<>();
         for (int order = 0; order < names.length; order++) {
@@ -44,11 +46,12 @@ public class StrategyNodesBuilder {
         return this;
     }
 
-    public StrategyNodesBuilder initSwitchers(Map<String, Map<Integer, String>> nameSwitchers) throws StrategyException {
-        if (MapUtils.isEmpty(nameSwitchers)) {
+    public StrategyArrangementBuilder initSwitchers(NameSwitchers nameSwitchers) throws StrategyException {
+        if (!NameSwitchers.haveSwitcher(nameSwitchers)) {
             return this;
         }
-        nameSwitchers.forEach((name, map) -> {
+        Map<String, Map<Integer, String>> nameMap = nameSwitchers.getNameMap();
+        nameMap.forEach((name, map) -> {
             if (MapUtils.isEmpty(map)) {
                 return;
             }
@@ -56,16 +59,26 @@ public class StrategyNodesBuilder {
             if (Objects.isNull(order)) {
                 throw new NoHandlerException(name);
             }
-            // 验证 Switcher 是结果集的子集
+
+            // 验证 switcher 的 status 是结果集的子集
             FlowHandler<?,?> handler = nodes.get(order).getHandler();
             Set<Integer> outSet = Optional.ofNullable(handler.customStatus()).orElse(new HashSet<>());
-            outSet.add(BaseStatus.SUCCESS.getStatus()); // 默认成功也要加上
+            List<Integer> baseStatus = Arrays.stream(BaseHandlerStatusEnum.values())
+                    .map(BaseHandlerStatusEnum::getStatus)
+                    .collect(Collectors.toList());
+            outSet.addAll(baseStatus);
             Set<Integer> transferSet = map.keySet();
             if(!outSet.containsAll(transferSet)){
                 throw new WrongSwitcherException(name,null, WrongSwitcherException.WrongType.WRONG_STATUS);
             }
+            // 初始化 switcher
             HashMap<Integer, Integer> switcher = new HashMap<>();
             map.forEach((status, target) -> {
+
+                if (NameSwitchers.END_FLOW.equals(target)){
+                    switcher.put(status,-1); // -1 表示流程结束
+                    return;
+                }
                 Integer targetOrder = node2order.get(target);
                 if (Objects.isNull(targetOrder)) {
                     throw new NoHandlerException(target);
@@ -80,7 +93,6 @@ public class StrategyNodesBuilder {
         });
         return this;
     }
-
 
     public ArrayList<StrategyNode> build() {
         return nodes;

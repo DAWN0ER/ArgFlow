@@ -1,4 +1,4 @@
-package com.dawnyang.argflow.domain.task;
+package com.dawnyang.argflow.domain.enums;
 
 /**
  * Created with IntelliJ IDEA.
