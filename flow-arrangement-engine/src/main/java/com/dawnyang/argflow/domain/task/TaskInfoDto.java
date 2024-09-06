@@ -25,6 +25,7 @@ public class TaskInfoDto {
     private String strategyName;
     private Map<String, StatusResult> resultMap;
     private Integer currentNode;
+    private Object resultIntegration;
 
     public TaskInfoDto(String strategyName){
         this.taskId = MistUidGenerator.getUid();

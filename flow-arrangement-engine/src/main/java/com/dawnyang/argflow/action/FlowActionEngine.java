@@ -100,100 +100,155 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         );
     }
 
-    public StatusResult execute(String strategyName, Object input) throws TaskException{
+    public StatusResult execute(String strategyName, Object input) throws TaskException {
         BaseStrategy strategy = strategyMap.get(strategyName);
         if (Objects.isNull(strategy)) {
             throw new TaskInitException(strategyName);
         }
         TaskInfoDto taskInfo = new TaskInfoDto(strategyName);
-        recordTask(taskInfo,strategy);
-
-        ArrayList<StrategyNode> strategyNodeArrangement = strategy.getNodeArrangement();
-        int order = 0;
-        Object resultIntegration = null;
+        recordTask(taskInfo, strategy);
         taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
-        try{
-            while(order < strategyNodeArrangement.size()) {
-                StrategyNode strategyNode = strategyNodeArrangement.get(order);
-                taskInfo.setCurrentNode(order);
-
-                StatusResult result = strategyNode.getHandler().handler(input);
-                taskInfo.getResultMap().put(strategyNode.getName(),result);
-                recordTask(taskInfo,strategy);
-
-                if(BaseHandlerStatusEnum.WAIT.getStatus().equals(result.getStatus())){
-                    if(strategyNode.getHandler() instanceof EnableWait){
-                        TaskWaitInfo waitInfo = new TaskWaitInfo();
-                        waitInfo.setTaskId(taskInfo.getTaskId());
-                        String waitHandler = strategyNodeArrangement.get(taskInfo.getCurrentNode()).getName();
-                        waitInfo.setWaitHandler(waitHandler);
-                        waitInfo.setHandlerResultData(result.getData());
-                        return new StatusResult<>(TaskStatusEnum.WAIT.getCode(), waitInfo);
-                    } else {
-                        throw new TaskWaitException(strategyNode.getName());
-                    }
-                }
-                if(BaseHandlerStatusEnum.NEXT.getStatus().equals(result.getStatus())){
-                    order++;
-                    continue;
-                }
-                // switcher
-                HashMap<Integer, Integer> switcher = strategyNode.getSwitcher();
-                if(MapUtils.isNotEmpty(switcher)){
-                    Integer target = switcher.get(result.getStatus());
-                    if(Objects.equals(target,-1)){
-                        break;
-                    }
-                    if(Objects.nonNull(target) && target > order){
-                        order = target;
-                        continue;
-                    }
-                }
-                // 默认定义的特殊状态
-                UnnaturalEndTaskInfo endTaskInfo = new UnnaturalEndTaskInfo();
-                endTaskInfo.setTaskId(taskInfo.getTaskId());
-                endTaskInfo.setResult(result);
-                String endHandler = strategyNodeArrangement.get(taskInfo.getCurrentNode()).getName();
-                endTaskInfo.setAbnormalHandler(endHandler);
-                if(BaseHandlerStatusEnum.EXCEPTION.getStatus().equals(result.getStatus())){
-                    taskInfo.setTaskStatus(TaskStatusEnum.EXCEPTION.getCode());
-                    recordTask(taskInfo,strategy);
-                    return new StatusResult<>(TaskStatusEnum.EXCEPTION.getCode(),endTaskInfo);
-                }
-                if(BaseHandlerStatusEnum.FAIL.getStatus().equals(result.getStatus())){
-                    taskInfo.setTaskStatus(TaskStatusEnum.FAIL.getCode());
-                    recordTask(taskInfo,strategy);
-                    return new StatusResult<>(TaskStatusEnum.FAIL.getCode(), endTaskInfo);
-                }
-                taskInfo.setTaskStatus(TaskStatusEnum.UNEXPECTED_STATUS.getCode());
-                recordTask(taskInfo,strategy);
-                return new StatusResult<>(TaskStatusEnum.UNEXPECTED_STATUS.getCode(),endTaskInfo);
-            }
-            String endHandler = strategyNodeArrangement.get(taskInfo.getCurrentNode()).getName();
-            resultIntegration = strategy.integrateResult(taskInfo.getResultMap(), endHandler);
-        } catch (Exception e){
-            throw new TaskRunningException(strategyName,e);
+        try {
+            return processSinceOrder(0,strategy,input,taskInfo);
+        } catch (Exception e) {
+            throw new TaskRunningException(strategyName, e);
         }
-        taskInfo.setTaskStatus(TaskStatusEnum.FINISHED.getCode());
-        recordTask(taskInfo,strategy);
-        return new StatusResult<>(TaskStatusEnum.FINISHED.getCode(), resultIntegration);
     }
 
     // TODO 这个应该做成工厂的
-    public void initCacheCapacity(int capacity){
-        if(MapUtils.isEmpty(lruCache)) {
+    public void initCacheCapacity(int capacity) {
+        if (MapUtils.isEmpty(lruCache)) {
             this.cacheCapacity = capacity;
         }
     }
 
+    // TODO 各种判NULL都没有
+    public StatusResult awakeTask(Long taskId, String strategyName, Object input) {
+        BaseStrategy strategy = strategyMap.get(strategyName);
+        // NULL
+        TaskInfoDto taskInfo = getTaskInfo(taskId, strategy);
+        Integer currentNode = taskInfo.getCurrentNode();
+        StrategyNode strategyNode = strategy.getNodeArrangement().get(currentNode);
 
+        EnableWait handler = (EnableWait) strategyNode.getHandler();
+        StatusResult result = handler.waitFor(input);
+
+        taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
+        taskInfo.getResultMap().put(strategyNode.getName(),result);
+        recordTask(taskInfo,strategy);
+
+        if (BaseHandlerStatusEnum.NEXT.getStatus().equals(result.getStatus())){
+            return processSinceOrder(currentNode+1,strategy,input,taskInfo);
+        }
+        if (BaseHandlerStatusEnum.WAIT.getStatus().equals(result.getStatus())){
+            throw new TaskWaitException(strategyNode.getName(), TaskWaitException.Reason.WAIT_TWICE);
+        }
+        // 自定义 switcher
+        HashMap<Integer, Integer> switcher = strategyNode.getSwitcher();
+        if (MapUtils.isNotEmpty(switcher)) {
+            Integer target = switcher.get(result.getStatus());
+            if (Objects.equals(target, -1)) {
+                Object resultIntegration = strategy.integrateResult(taskInfo.getResultMap(), strategyNode.getName());
+                taskInfo.setTaskStatus(TaskStatusEnum.FINISHED.getCode());
+                taskInfo.setResultIntegration(resultIntegration);
+                recordTask(taskInfo, strategy);
+                return new StatusResult<>(TaskStatusEnum.FINISHED.getCode(), resultIntegration);
+            }
+            if (Objects.nonNull(target) && target > currentNode) {
+                return processSinceOrder(target,strategy,input,taskInfo);
+            }
+        }
+        return processAbnormalResult(taskInfo,result,strategy);
+    }
+
+    private StatusResult processSinceOrder(int order, BaseStrategy strategy, Object input, TaskInfoDto taskInfo) throws TaskException {
+        ArrayList<StrategyNode> strategyNodeArrangement = strategy.getNodeArrangement();
+        while (order < strategyNodeArrangement.size()) {
+            StrategyNode strategyNode = strategyNodeArrangement.get(order);
+            taskInfo.setCurrentNode(order);
+            StatusResult result = strategyNode.getHandler().handler(input);
+            taskInfo.getResultMap().put(strategyNode.getName(), result);
+            recordTask(taskInfo, strategy);
+
+            // 默认编排
+            if (BaseHandlerStatusEnum.WAIT.getStatus().equals(result.getStatus())) {
+                if (strategyNode.getHandler() instanceof EnableWait) {
+                    TaskWaitInfo waitInfo = new TaskWaitInfo();
+                    waitInfo.setTaskId(taskInfo.getTaskId());
+                    String waitHandler = strategyNodeArrangement.get(taskInfo.getCurrentNode()).getName();
+                    waitInfo.setWaitHandler(waitHandler);
+                    waitInfo.setHandlerResultData(result.getData());
+                    return new StatusResult<>(TaskStatusEnum.WAIT.getCode(), waitInfo);
+                } else {
+                    throw new TaskWaitException(strategyNode.getName(), TaskWaitException.Reason.NOT_SUPPORT);
+                }
+            }
+            if (BaseHandlerStatusEnum.NEXT.getStatus().equals(result.getStatus())) {
+                order++;
+                continue;
+            }
+            // 自定义 switcher
+            HashMap<Integer, Integer> switcher = strategyNode.getSwitcher();
+            if (MapUtils.isNotEmpty(switcher)) {
+                Integer target = switcher.get(result.getStatus());
+                if (Objects.equals(target, -1)) {
+                    break;
+                }
+                if (Objects.nonNull(target) && target > order) {
+                    order = target;
+                    continue;
+                }
+            }
+            // 默认定义的特殊状态
+            return processAbnormalResult(taskInfo, result, strategy);
+        }
+
+        String endHandler = strategyNodeArrangement.get(taskInfo.getCurrentNode()).getName();
+        Object resultIntegration = strategy.integrateResult(taskInfo.getResultMap(), endHandler);
+        taskInfo.setTaskStatus(TaskStatusEnum.FINISHED.getCode());
+        taskInfo.setResultIntegration(resultIntegration);
+        recordTask(taskInfo, strategy);
+        return new StatusResult<>(TaskStatusEnum.FINISHED.getCode(), resultIntegration);
+    }
+
+    private StatusResult processAbnormalResult(TaskInfoDto taskInfo, StatusResult result, BaseStrategy strategy) {
+        UnnaturalEndTaskInfo endTaskInfo = new UnnaturalEndTaskInfo();
+        endTaskInfo.setTaskId(taskInfo.getTaskId());
+        endTaskInfo.setResult(result);
+        String endHandler = strategy.getNodeArrangement().get(taskInfo.getCurrentNode()).getName();
+        endTaskInfo.setAbnormalHandler(endHandler);
+        if (BaseHandlerStatusEnum.EXCEPTION.getStatus().equals(result.getStatus())) {
+            taskInfo.setTaskStatus(TaskStatusEnum.EXCEPTION.getCode());
+            recordTask(taskInfo, strategy);
+            return new StatusResult<>(TaskStatusEnum.EXCEPTION.getCode(), endTaskInfo);
+        }
+        if (BaseHandlerStatusEnum.FAIL.getStatus().equals(result.getStatus())) {
+            taskInfo.setTaskStatus(TaskStatusEnum.FAIL.getCode());
+            recordTask(taskInfo, strategy);
+            return new StatusResult<>(TaskStatusEnum.FAIL.getCode(), endTaskInfo);
+        }
+        taskInfo.setTaskStatus(TaskStatusEnum.UNEXPECTED_STATUS.getCode());
+        recordTask(taskInfo, strategy);
+        return new StatusResult<>(TaskStatusEnum.UNEXPECTED_STATUS.getCode(), endTaskInfo);
+    }
 
     private void recordTask(TaskInfoDto taskInfo, BaseStrategy strategy) throws TaskRecordException {
         lruCache.record(taskInfo);
-        if(strategy instanceof TaskDurable){
-            if(!((TaskDurable) strategy).recordTaskInfo(taskInfo)) {
-               throw new TaskRecordException(taskInfo.getTaskId(),taskInfo.getStrategyName());
+        if (strategy instanceof TaskDurable) {
+            if (!((TaskDurable) strategy).recordTaskInfo(taskInfo)) {
+                throw new TaskRecordException(taskInfo.getTaskId(), taskInfo.getStrategyName());
             }
         }
+    }
+
+    private TaskInfoDto getTaskInfo(Long taskId, BaseStrategy strategy){
+        TaskInfoDto task = lruCache.getTask(taskId);
+        if(Objects.nonNull(task)){
+            return task;
+        }
+        if (strategy instanceof TaskDurable) {
+            return  ((TaskDurable) strategy).getTaskInfo(taskId);
+        }
+        return null;
     }
 }

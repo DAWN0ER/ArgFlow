@@ -30,7 +30,7 @@ public class LRUCache extends LinkedHashMap<Long, TaskInfoDto> {
         put(taskInfoDto.getTaskId(),taskInfoDto);
     }
 
-    public TaskInfoDto getTask(long taskId){
+    public synchronized TaskInfoDto getTask(long taskId){
         return get(taskId);
     }
 
