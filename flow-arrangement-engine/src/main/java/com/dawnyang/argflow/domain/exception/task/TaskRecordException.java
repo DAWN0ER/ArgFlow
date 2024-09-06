@@ -1,4 +1,6 @@
-package com.dawnyang.argflow.domain.exception;
+package com.dawnyang.argflow.domain.exception.task;
+
+import com.dawnyang.argflow.domain.exception.TaskException;
 
 /**
  * Created with IntelliJ IDEA.

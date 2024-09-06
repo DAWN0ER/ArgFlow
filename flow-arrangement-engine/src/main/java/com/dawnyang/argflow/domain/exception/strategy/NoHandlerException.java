@@ -1,4 +1,6 @@
-package com.dawnyang.argflow.domain.exception;
+package com.dawnyang.argflow.domain.exception.strategy;
+
+import com.dawnyang.argflow.domain.exception.StrategyException;
 
 /**
  * Created with IntelliJ IDEA.

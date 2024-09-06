@@ -4,7 +4,14 @@ import com.dawnyang.argflow.domain.base.BaseStatus;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.base.StrategyNode;
 import com.dawnyang.argflow.domain.exception.*;
+import com.dawnyang.argflow.domain.exception.strategy.NoHandlerException;
+import com.dawnyang.argflow.domain.exception.strategy.WrongStrategyException;
+import com.dawnyang.argflow.domain.exception.task.TaskInitException;
+import com.dawnyang.argflow.domain.exception.task.TaskRecordException;
+import com.dawnyang.argflow.domain.exception.task.TaskRunningException;
+import com.dawnyang.argflow.domain.exception.task.TaskWaitException;
 import com.dawnyang.argflow.domain.task.TaskInfoDto;
+import com.dawnyang.argflow.domain.task.TaskStatusEnum;
 import com.dawnyang.argflow.utils.StrategyNodesBuilder;
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
@@ -97,37 +104,49 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
     public StatusResult execute(String strategyName, Object input) throws TaskException{
         BaseStrategy strategy = strategyMap.get(strategyName);
         if (Objects.isNull(strategy)) {
-            throw new TaskInitException("Not found strategy bean id = \"" + strategyName + "\"");
+            throw new TaskInitException(strategyName);
         }
         TaskInfoDto taskInfo = new TaskInfoDto(strategyName);
         recordTask(taskInfo,strategy);
 
-        ArrayList<StrategyNode> nodes = strategy.getNodeArrangement();
+        ArrayList<StrategyNode> strategyNodeArrangement = strategy.getNodeArrangement();
         int order = 0;
-        while(order < nodes.size()) {
-            taskInfo.setCurrentNode(order);
-            StrategyNode strategyNode = nodes.get(order);
+        try{
+            while(order < strategyNodeArrangement.size()) {
+                taskInfo.setCurrentNode(order);
+                StrategyNode strategyNode = strategyNodeArrangement.get(order);
 
-            StatusResult result = strategyNode.getHandler().handler(input);
-            if(BaseStatus.EXCEPTION.getStatus().equals(result.getStatus())){
-                // TODO 抛异常
-            }
-            if(BaseStatus.FAIL.getStatus().equals(result.getStatus())){
-                // TODO 直接结束，返回TaskInfo ？
-            }
-            if(BaseStatus.WAIT.getStatus().equals(result.getStatus())){
-                // TODO 返回TaskInfo ？
-            }
-            taskInfo.getResultMap().put(strategyNode.getName(),result);
-            HashMap<Integer, Integer> switcher = strategyNode.getSwitcher();
-            if(MapUtils.isNotEmpty(switcher)){
-                Integer next = switcher.get(result.getStatus());
-                if(Objects.nonNull(next)){
-                    order = next;
-                    continue;
+                StatusResult result = strategyNode.getHandler().handler(input);
+                taskInfo.getResultMap().put(strategyNode.getName(),result);
+                lruCache.record(taskInfo);
+
+                if(BaseStatus.EXCEPTION.getStatus().equals(result.getStatus())){
+                    // TODO 不抛异常，要求Handler在自己的handler里面捕获
+                    return new StatusResult<>(TaskStatusEnum.EXCEPTION.getCode(), result);
                 }
+                if(BaseStatus.FAIL.getStatus().equals(result.getStatus())){
+                    // TODO 直接结束，返回TaskInfo ？
+                }
+                if(BaseStatus.WAIT.getStatus().equals(result.getStatus())){
+                    // TODO 返回TaskInfo ？
+                    if(strategyNode.getHandler() instanceof EnableWait){
+                        return new StatusResult<>(TaskStatusEnum.WAIT.getCode(), result /* TODO 还没想清楚怎么解决*/);
+                    } else {
+                        throw new TaskWaitException(strategyNode.getName());
+                    }
+                }
+                HashMap<Integer, Integer> switcher = strategyNode.getSwitcher();
+                if(MapUtils.isNotEmpty(switcher)){
+                    Integer next = switcher.get(result.getStatus());
+                    if(Objects.nonNull(next)){
+                        order = next;
+                        continue;
+                    }
+                }
+                order++;
             }
-            order++;
+        } catch (Exception e){
+            throw new TaskRunningException(strategyName,e);
         }
         return new StatusResult<>(BaseStatus.SUCCESS.getStatus(), strategy.integrateResult(taskInfo.getResultMap()));
     }
@@ -138,7 +157,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         }
     }
 
-    private void recordTask(TaskInfoDto taskInfo, BaseStrategy strategy) throws TaskRecordException{
+    private void recordTask(TaskInfoDto taskInfo, BaseStrategy strategy) throws TaskRecordException {
         lruCache.record(taskInfo);
         if(strategy instanceof TaskDurable){
             if(!((TaskDurable) strategy).recordTaskInfo(taskInfo)) {

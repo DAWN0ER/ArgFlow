@@ -4,8 +4,8 @@ import com.dawnyang.argflow.action.FlowHandler;
 import com.dawnyang.argflow.domain.base.BaseStatus;
 import com.dawnyang.argflow.domain.base.StrategyNode;
 import com.dawnyang.argflow.domain.exception.StrategyException;
-import com.dawnyang.argflow.domain.exception.WrongSwitcherException;
-import com.dawnyang.argflow.domain.exception.NoHandlerException;
+import com.dawnyang.argflow.domain.exception.strategy.WrongSwitcherException;
+import com.dawnyang.argflow.domain.exception.strategy.NoHandlerException;
 import org.apache.commons.collections.MapUtils;
 
 import java.util.*;

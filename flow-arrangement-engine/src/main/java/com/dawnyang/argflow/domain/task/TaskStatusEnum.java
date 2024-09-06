@@ -11,6 +11,7 @@ public enum TaskStatusEnum {
     INIT(0),
     RUNNING(1),
     FINISHED(2),
+    WAIT(3),
 
     FAIL(-1),
     EXCEPTION(-2)
