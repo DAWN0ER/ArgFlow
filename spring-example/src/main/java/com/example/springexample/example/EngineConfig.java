@@ -12,10 +12,12 @@ import org.springframework.context.annotation.Configuration;
  * @Since: 2024/09/03/20:34
  */
 @Configuration
-public class config {
+public class EngineConfig {
 
     @Bean
     public FlowActionEngine flowActionEngine(){
-        return new FlowActionEngine();
+        FlowActionEngine engine = new FlowActionEngine();
+        engine.initCacheCapacity(20);
+        return engine;
     }
 }

@@ -8,7 +8,7 @@ import com.dawnyang.argflow.domain.base.NameSwitchers;
 import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.base.StrategyNode;
-import com.dawnyang.argflow.domain.base.TaskWaitInfo;
+import com.dawnyang.argflow.domain.task.TaskWaitInfo;
 import com.dawnyang.argflow.domain.exception.*;
 import com.dawnyang.argflow.domain.exception.strategy.NoHandlerException;
 import com.dawnyang.argflow.domain.exception.strategy.WrongStrategyException;
@@ -18,6 +18,7 @@ import com.dawnyang.argflow.domain.exception.task.TaskRunningException;
 import com.dawnyang.argflow.domain.exception.task.TaskWaitException;
 import com.dawnyang.argflow.domain.task.TaskInfoDto;
 import com.dawnyang.argflow.domain.enums.TaskStatusEnum;
+import com.dawnyang.argflow.domain.task.UnnaturalEndTaskInfo;
 import com.dawnyang.argflow.utils.StrategyArrangementBuilder;
 import com.google.gson.Gson;
 import lombok.extern.slf4j.Slf4j;
@@ -110,6 +111,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         ArrayList<StrategyNode> strategyNodeArrangement = strategy.getNodeArrangement();
         int order = 0;
         Object resultIntegration = null;
+        taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
         try{
             while(order < strategyNodeArrangement.size()) {
                 StrategyNode strategyNode = strategyNodeArrangement.get(order);
@@ -148,21 +150,33 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
                     }
                 }
                 // 默认定义的特殊状态
+                UnnaturalEndTaskInfo endTaskInfo = new UnnaturalEndTaskInfo();
+                endTaskInfo.setTaskId(taskInfo.getTaskId());
+                endTaskInfo.setResult(result);
+                String endHandler = strategyNodeArrangement.get(taskInfo.getCurrentNode()).getName();
+                endTaskInfo.setAbnormalHandler(endHandler);
                 if(BaseHandlerStatusEnum.EXCEPTION.getStatus().equals(result.getStatus())){
-                    return new StatusResult<>(TaskStatusEnum.EXCEPTION.getCode(), result.getData());
+                    taskInfo.setTaskStatus(TaskStatusEnum.EXCEPTION.getCode());
+                    recordTask(taskInfo,strategy);
+                    return new StatusResult<>(TaskStatusEnum.EXCEPTION.getCode(),endTaskInfo);
                 }
                 if(BaseHandlerStatusEnum.FAIL.getStatus().equals(result.getStatus())){
-                    // TODO 直接结束，返回TaskInfo ？
+                    taskInfo.setTaskStatus(TaskStatusEnum.FAIL.getCode());
+                    recordTask(taskInfo,strategy);
+                    return new StatusResult<>(TaskStatusEnum.FAIL.getCode(), endTaskInfo);
                 }
-                order++;
+                taskInfo.setTaskStatus(TaskStatusEnum.UNEXPECTED_STATUS.getCode());
+                recordTask(taskInfo,strategy);
+                return new StatusResult<>(TaskStatusEnum.UNEXPECTED_STATUS.getCode(),endTaskInfo);
             }
             String endHandler = strategyNodeArrangement.get(taskInfo.getCurrentNode()).getName();
             resultIntegration = strategy.integrateResult(taskInfo.getResultMap(), endHandler);
-
         } catch (Exception e){
             throw new TaskRunningException(strategyName,e);
         }
-        return new StatusResult<>(BaseHandlerStatusEnum.NEXT.getStatus(), resultIntegration);
+        taskInfo.setTaskStatus(TaskStatusEnum.FINISHED.getCode());
+        recordTask(taskInfo,strategy);
+        return new StatusResult<>(TaskStatusEnum.FINISHED.getCode(), resultIntegration);
     }
 
     public void initCacheCapacity(int capacity){

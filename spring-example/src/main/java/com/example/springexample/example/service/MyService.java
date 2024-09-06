@@ -2,11 +2,11 @@ package com.example.springexample.example.service;
 
 import com.dawnyang.argflow.action.FlowActionEngine;
 import com.dawnyang.argflow.domain.base.StatusResult;
+import com.google.gson.Gson;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
 
 /**
  * Created with IntelliJ IDEA.
@@ -23,9 +23,8 @@ public class MyService implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        engine.tell("myStrategy1");
-        StatusResult result = engine.execute("myStrategy1", "[TEST]");
-        ArrayList data = (ArrayList) result.getData();
-        System.out.println(data);
+//        engine.tell("myStrategy1");
+        StatusResult result = engine.execute("myStrategy2", "[TEST]");
+        System.out.println(new Gson().toJson(result));
     }
 }

@@ -14,7 +14,8 @@ public enum TaskStatusEnum {
     WAIT(3),
 
     FAIL(-1),
-    EXCEPTION(-2)
+    EXCEPTION(-2),
+    UNEXPECTED_STATUS(-3)
     ;
 
     private final int code;

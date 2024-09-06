@@ -2,6 +2,7 @@ package com.example.springexample.example.handler;
 
 import com.dawnyang.argflow.api.FlowHandler;
 import com.dawnyang.argflow.domain.base.StatusResult;
+import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -14,7 +15,7 @@ public class MyHandler1 implements FlowHandler<String, String> {
     @Override
     public StatusResult<String> handler(String s) {
         String k = Objects.isNull(s) ? "" : s;
-        return new StatusResult<>(Status.CUS.code, k+"-myHandler1");
+        return new StatusResult<>(BaseHandlerStatusEnum.FAIL.getStatus(), k+"-myHandler1");
     }
 
     @Override
@@ -24,7 +25,8 @@ public class MyHandler1 implements FlowHandler<String, String> {
 
     public enum Status{
         CUS(4),
-        COS(9)
+        COS(9),
+        CCC(18),
         ;
 
         public final int code;

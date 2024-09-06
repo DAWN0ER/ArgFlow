@@ -1,4 +1,4 @@
-package com.dawnyang.argflow.domain.base;
+package com.dawnyang.argflow.domain.task;
 
 import lombok.Data;
 
