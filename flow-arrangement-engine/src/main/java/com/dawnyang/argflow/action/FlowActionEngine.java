@@ -179,11 +179,14 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         return new StatusResult<>(TaskStatusEnum.FINISHED.getCode(), resultIntegration);
     }
 
+    // TODO 这个应该做成工厂的
     public void initCacheCapacity(int capacity){
         if(MapUtils.isEmpty(lruCache)) {
             this.cacheCapacity = capacity;
         }
     }
+
+
 
     private void recordTask(TaskInfoDto taskInfo, BaseStrategy strategy) throws TaskRecordException {
         lruCache.record(taskInfo);
