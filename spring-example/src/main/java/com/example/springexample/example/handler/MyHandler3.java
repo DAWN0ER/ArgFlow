@@ -21,7 +21,7 @@ public class MyHandler3 implements FlowHandler<String,String> {
     @Override
     public StatusResult<String> handler(String s) {
         String k = Objects.isNull(s) ? "" : s;
-        return new StatusResult<>(BaseHandlerStatusEnum.NEXT.getStatus(),k+"-myHandler333");
+        return new StatusResult<>(BaseHandlerStatusEnum.EXCEPTION.getStatus(),k+"-myHandler333");
     }
 
     @Override

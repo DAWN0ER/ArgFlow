@@ -27,8 +27,8 @@ public class MyStrategy1 extends BaseStrategy {
     @Override
     public NameSwitchers getSwitchers() {
         return SwitcherBuilder.newBuilder()
-                .addSwitcher("myHandler1", MyHandler1.Status.CUS.code, "myHandler3")
-                .addSwitcher("myHandler1",MyHandler1.Status.COS.code, "myHandler2")
+                .addSwitcher("myHandler1", MyHandler1.Status.COS.code, "myHandler3")
+                .addSwitcher("myHandler1",MyHandler1.Status.CUS.code, "myHandler2")
                 .build();
     }
 

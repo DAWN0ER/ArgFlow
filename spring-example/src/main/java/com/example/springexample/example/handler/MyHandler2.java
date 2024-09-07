@@ -14,7 +14,7 @@ public class MyHandler2 implements FlowHandler<String,String>, EnableWait<String
     @Override
     public StatusResult<String> handler(String s) {
         String k = Objects.isNull(s) ? "" : s;
-        return new StatusResult<>(BaseHandlerStatusEnum.WAIT.getStatus(),k+"-myHandler2");
+        return new StatusResult<>(BaseHandlerStatusEnum.FAIL.getStatus(),k+"-myHandler2");
     }
 
     @Override
