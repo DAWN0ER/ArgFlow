@@ -18,13 +18,13 @@ public enum TaskStatusEnum {
     UNEXPECTED_STATUS(-3)
     ;
 
-    private final int code;
+    private final Integer code;
 
     TaskStatusEnum(int code) {
         this.code = code;
     }
 
-    public int getCode() {
+    public Integer getCode() {
         return code;
     }
 }

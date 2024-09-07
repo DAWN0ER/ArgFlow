@@ -1,6 +1,7 @@
 package com.example.springexample.example;
 
 import com.dawnyang.argflow.action.FlowActionEngine;
+import com.dawnyang.argflow.utils.FlowEngineFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,8 +17,6 @@ public class EngineConfig {
 
     @Bean
     public FlowActionEngine flowActionEngine(){
-        FlowActionEngine engine = new FlowActionEngine();
-        engine.initCacheCapacity(20);
-        return engine;
+         return FlowEngineFactory.generate(5);
     }
 }

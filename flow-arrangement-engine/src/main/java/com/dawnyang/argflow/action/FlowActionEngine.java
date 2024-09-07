@@ -5,11 +5,12 @@ import com.dawnyang.argflow.api.EnableWait;
 import com.dawnyang.argflow.api.FlowHandler;
 import com.dawnyang.argflow.api.TaskDurable;
 import com.dawnyang.argflow.domain.base.NameSwitchers;
-import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.base.StrategyNode;
-import com.dawnyang.argflow.domain.task.TaskWaitInfo;
-import com.dawnyang.argflow.domain.exception.*;
+import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
+import com.dawnyang.argflow.domain.enums.TaskStatusEnum;
+import com.dawnyang.argflow.domain.exception.StrategyException;
+import com.dawnyang.argflow.domain.exception.TaskException;
 import com.dawnyang.argflow.domain.exception.strategy.NoHandlerException;
 import com.dawnyang.argflow.domain.exception.strategy.WrongStrategyException;
 import com.dawnyang.argflow.domain.exception.task.TaskInitException;
@@ -17,11 +18,9 @@ import com.dawnyang.argflow.domain.exception.task.TaskRecordException;
 import com.dawnyang.argflow.domain.exception.task.TaskRunningException;
 import com.dawnyang.argflow.domain.exception.task.TaskWaitException;
 import com.dawnyang.argflow.domain.task.TaskInfoDto;
-import com.dawnyang.argflow.domain.enums.TaskStatusEnum;
+import com.dawnyang.argflow.domain.task.TaskWaitInfo;
 import com.dawnyang.argflow.domain.task.UnnaturalEndTaskInfo;
 import com.dawnyang.argflow.utils.StrategyArrangementBuilder;
-import com.google.gson.Gson;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections.MapUtils;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
@@ -29,7 +28,6 @@ import org.springframework.context.ApplicationContextAware;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 
 /**
  * Created with IntelliJ IDEA.
@@ -38,13 +36,20 @@ import java.util.stream.Collectors;
  * @Auther: Dawn Yang
  * @Since: 2024/09/03/20:26
  */
-@Slf4j
 public class FlowActionEngine implements InitializingBean, ApplicationContextAware {
 
     private int cacheCapacity = 100;
     private LRUCache lruCache;
-    private ApplicationContext springContext;
     private Map<String, BaseStrategy> strategyMap;
+
+    private ApplicationContext springContext;
+
+    /** 工厂支持方法 **/
+    public void initCacheCapacity(int capacity) {
+        if (MapUtils.isEmpty(lruCache)) {
+            this.cacheCapacity = capacity;
+        }
+    }
 
     public void setApplicationContext(ApplicationContext applicationContext) {
         this.springContext = applicationContext;
@@ -83,28 +88,6 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
                 .initSwitchers(switchers)
                 .build();
         strategy.setNodeArrangement(nodeList);
-    }
-
-    public void tell(String name) {
-        BaseStrategy baseStrategy = strategyMap.get(name);
-        if (Objects.isNull(baseStrategy)) {
-            return;
-        }
-        ArrayList<StrategyNode> nodeArrangement = baseStrategy.getNodeArrangement();
-        List<String> instanceList = nodeArrangement.stream().map(e -> e.getHandler().toString()).collect(Collectors.toList());
-        log.info("Strategy details:\nhandlersNames={},\nswitchers={},\nhandlerInstance={},\nNodeJson={}",
-                baseStrategy.handlerNameArrangement(),
-                baseStrategy.getSwitchers(),
-                instanceList,
-                new Gson().toJson(nodeArrangement)
-        );
-    }
-
-    // TODO 这个应该做成工厂的
-    public void initCacheCapacity(int capacity) {
-        if (MapUtils.isEmpty(lruCache)) {
-            this.cacheCapacity = capacity;
-        }
     }
 
     public <T> StatusResult<T> execute(String strategyName, Object input) throws TaskException {
@@ -216,7 +199,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         return new StatusResult<>(TaskStatusEnum.FINISHED.getCode(), resultIntegration);
     }
 
-    private StatusResult processAbnormalResult(TaskInfoDto taskInfo, StatusResult result, BaseStrategy strategy) {
+    private StatusResult processAbnormalResult(TaskInfoDto taskInfo, StatusResult<?> result, BaseStrategy strategy) {
         UnnaturalEndTaskInfo endTaskInfo = new UnnaturalEndTaskInfo();
         endTaskInfo.setTaskId(taskInfo.getTaskId());
         endTaskInfo.setResult(result);

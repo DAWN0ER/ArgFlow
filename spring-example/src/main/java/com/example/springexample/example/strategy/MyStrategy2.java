@@ -4,9 +4,9 @@ import com.dawnyang.argflow.api.BaseStrategy;
 import com.dawnyang.argflow.api.TaskDurable;
 import com.dawnyang.argflow.domain.base.NameSwitchers;
 import com.dawnyang.argflow.domain.base.StatusResult;
+import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
 import com.dawnyang.argflow.domain.task.TaskInfoDto;
 import com.dawnyang.argflow.utils.SwitcherBuilder;
-import com.example.springexample.example.handler.MyHandler1;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import org.springframework.stereotype.Service;
@@ -25,23 +25,22 @@ public class MyStrategy2 extends BaseStrategy implements TaskDurable {
     @Override
     public String[] handlerNameArrangement() {
         return new String[]{
-                "myHandler1",
                 "myHandler3",
-                "myHandler2"
+                "myHandler1"
         };
     }
 
     @Override
     public NameSwitchers getSwitchers() {
         return SwitcherBuilder.newBuilder()
-                .addSwitcher("myHandler1", MyHandler1.Status.CCC.code, NameSwitchers.END_FLOW)
-                .addSwitcher("myHandler1", MyHandler1.Status.CUS.code, "myHandler3")
-                .addSwitcher("myHandler1",MyHandler1.Status.COS.code, "myHandler2")
+                .addSwitcher("myHandler3", BaseHandlerStatusEnum.FAIL.getStatus(), NameSwitchers.END_FLOW)
+                .addSwitcher("myHandler3", BaseHandlerStatusEnum.EXCEPTION.getStatus(), "myHandler1")
                 .build();
     }
 
     @Override
-    public JsonObject integrateResult(Map<String, StatusResult<?>> resultMap, String endHandler) {
+    public JsonObject integrateResult(Map<String, StatusResult> resultMap, String endHandler) {
+        System.out.println("integrateResult!!2");
         JsonObject jsonObject = new JsonObject();
         Gson gson = new Gson();
         jsonObject.add("map",gson.toJsonTree(resultMap));

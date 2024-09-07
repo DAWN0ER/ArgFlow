@@ -1,11 +1,10 @@
 package com.example.springexample.example.handler;
 
 import com.dawnyang.argflow.api.FlowHandler;
-import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
 import com.dawnyang.argflow.domain.base.StatusResult;
+import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
 import org.springframework.stereotype.Service;
 
-import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -19,9 +18,16 @@ import java.util.Set;
 public class MyHandler3 implements FlowHandler<String,String> {
 
     @Override
-    public StatusResult<String> handler(String s) {
-        String k = Objects.isNull(s) ? "" : s;
-        return new StatusResult<>(BaseHandlerStatusEnum.EXCEPTION.getStatus(),k+"-myHandler333");
+    public StatusResult<String> handler(String input) {
+        System.out.println("MyHandler3(Base)=" + input);
+        int res = BaseHandlerStatusEnum.FAIL.getStatus();
+        try {
+            BaseHandlerStatusEnum anEnum = BaseHandlerStatusEnum.valueOf(input);
+            res= anEnum.getStatus();
+        } catch (IllegalArgumentException e) {
+            return new StatusResult<>(res, "myHandler3="+input);
+        }
+        return new StatusResult<>(res, "myHandler3="+input);
     }
 
     @Override
