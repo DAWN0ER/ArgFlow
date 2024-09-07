@@ -41,7 +41,7 @@ public class MyStrategy2 extends BaseStrategy implements TaskDurable {
     }
 
     @Override
-    public Object integrateResult(Map<String, StatusResult> resultMap, String endHandler) {
+    public JsonObject integrateResult(Map<String, StatusResult<?>> resultMap, String endHandler) {
         JsonObject jsonObject = new JsonObject();
         Gson gson = new Gson();
         jsonObject.add("map",gson.toJsonTree(resultMap));

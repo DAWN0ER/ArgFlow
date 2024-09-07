@@ -26,5 +26,5 @@ public abstract class BaseStrategy {
 
     abstract public NameSwitchers getSwitchers();
 
-    abstract public Object integrateResult(Map<String, StatusResult> resultMap, String endHandler);
+    abstract public Object integrateResult(Map<String, StatusResult<?>> resultMap, String endHandler);
 }

@@ -100,7 +100,14 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         );
     }
 
-    public StatusResult execute(String strategyName, Object input) throws TaskException {
+    // TODO 这个应该做成工厂的
+    public void initCacheCapacity(int capacity) {
+        if (MapUtils.isEmpty(lruCache)) {
+            this.cacheCapacity = capacity;
+        }
+    }
+
+    public <T> StatusResult<T> execute(String strategyName, Object input) throws TaskException {
         BaseStrategy strategy = strategyMap.get(strategyName);
         if (Objects.isNull(strategy)) {
             throw new TaskInitException(strategyName);
@@ -115,30 +122,22 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         }
     }
 
-    // TODO 这个应该做成工厂的
-    public void initCacheCapacity(int capacity) {
-        if (MapUtils.isEmpty(lruCache)) {
-            this.cacheCapacity = capacity;
-        }
-    }
-
     // TODO 各种判NULL
-    public StatusResult awakeTask(Long taskId, String strategyName, Object input) throws TaskException {
+    // TODO 流程灰度更新支
+    public <T> StatusResult<T> awakeTask(Long taskId, String strategyName, Object input) throws TaskException {
         BaseStrategy strategy = strategyMap.get(strategyName);
         if (Objects.isNull(strategy)) {
             throw new TaskInitException(strategyName);
         }
         TaskInfoDto taskInfo = getTaskInfo(taskId, strategy, strategyName);
+        if (!verifyTaskInfo(taskInfo,taskId,strategyName,strategy)){
+            throw new TaskRecordException(taskId,strategyName, TaskRecordException.Reason.CORRUPTED);
+        }
         Integer currentNode = taskInfo.getCurrentNode();
-        // TODO 检查记录是否完整匹配 包括 currentNode，taskId，taskStatus，resultMap
-
         StrategyNode strategyNode = strategy.getNodeArrangement().get(currentNode);
-        // TODO Handler 是否实现了 wait 接口，如果没有，也是记录损坏异常（要么 current node 错了， 要么服务迭代老流程坏掉了）
-        // TODO 流程灰度更新支持
 
-        EnableWait handler = (EnableWait) strategyNode.getHandler();
-        StatusResult result = handler.waitFor(input);
-
+        EnableWait<Object,Object> handler = (EnableWait) strategyNode.getHandler();
+        StatusResult<?> result = handler.waitFor(input);
         taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
         taskInfo.getResultMap().put(strategyNode.getName(), result);
         recordTask(taskInfo, strategy);
@@ -158,7 +157,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
                 taskInfo.setTaskStatus(TaskStatusEnum.FINISHED.getCode());
                 taskInfo.setResultIntegration(resultIntegration);
                 recordTask(taskInfo, strategy);
-                return new StatusResult<>(TaskStatusEnum.FINISHED.getCode(), resultIntegration);
+                return new StatusResult<T>(TaskStatusEnum.FINISHED.getCode(), (T) resultIntegration);
             }
             if (Objects.nonNull(target) && target > currentNode) {
                 return processSinceOrder(target, strategy, input, taskInfo);
@@ -270,5 +269,36 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             throw new TaskRecordException(taskId, strategyName, TaskRecordException.Reason.GET_ERROR);
         }
         return taskInfo;
+    }
+
+    private boolean verifyTaskInfo(TaskInfoDto taskInfo, Long taskId, String strategyName, BaseStrategy strategy) {
+        if (Objects.isNull(taskInfo)) {
+            return false;
+        }
+        if (!Objects.equals(taskInfo.getTaskId(), taskId)) {
+            return false;
+        }
+        if (!Objects.equals(taskInfo.getStrategyName(), strategyName)) {
+            return false;
+        }
+        if (Objects.equals(TaskStatusEnum.WAIT.getCode(), taskInfo.getTaskStatus())) {
+            return false;
+        }
+        if (Objects.isNull(taskInfo.getCurrentNode())
+                || taskInfo.getCurrentNode() < 0
+                || taskInfo.getCurrentNode() >= strategy.getNodeArrangement().size()
+        ) {
+            return false;
+        }
+        if(MapUtils.isEmpty(taskInfo.getResultMap())){
+            return false;
+        }
+        StrategyNode strategyNode = strategy.getNodeArrangement().get(taskInfo.getCurrentNode());
+        String handler = strategyNode.getName();
+        StatusResult<?> result = taskInfo.getResultMap().get(handler);
+        if (Objects.isNull(result) || !Objects.equals(BaseHandlerStatusEnum.WAIT.getStatus(), result.getStatus())) {
+            return false;
+        }
+        return strategyNode.getHandler() instanceof EnableWait;
     }
 }

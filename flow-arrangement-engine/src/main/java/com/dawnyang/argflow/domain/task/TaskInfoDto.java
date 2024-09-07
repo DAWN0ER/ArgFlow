@@ -23,7 +23,7 @@ public class TaskInfoDto {
     private Long taskId;
     private Integer taskStatus;
     private String strategyName;
-    private Map<String, StatusResult> resultMap;
+    private Map<String, StatusResult<?>> resultMap;
     private Integer currentNode;
     private Object resultIntegration;
 

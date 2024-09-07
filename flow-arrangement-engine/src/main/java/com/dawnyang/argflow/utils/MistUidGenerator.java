@@ -19,8 +19,15 @@ public class MistUidGenerator {
         int r1 = ThreadLocalRandom.current().nextInt(256);
         int r2 = ThreadLocalRandom.current().nextInt(256);
         long current = inc.incrementAndGet();
+        long currentTime = System.currentTimeMillis() - START;
+        if (current < currentTime){
+            synchronized (MistUidGenerator.class){
+                if (inc.get() < currentTime){
+                    inc.set(currentTime);
+                }
+            }
+        }
         return current << 16 | r2 << 8 | r1;
     }
-
 
 }

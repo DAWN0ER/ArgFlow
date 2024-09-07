@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 public class MistTest {
 
     @Test
-    public void test() throws Exception {
+    public void testDuplicate() throws Exception {
         ExecutorService service = Executors.newFixedThreadPool(10);
         int loop = 20000;
         double len = loop;
@@ -39,17 +39,43 @@ public class MistTest {
             });
         }
         service.shutdown();
-        service.awaitTermination(20, TimeUnit.SECONDS);
+        boolean awaitTermination = service.awaitTermination(20, TimeUnit.SECONDS);
         watch.stop();
-        System.out.println(len / watch.getNanoTime() * 1e9);
+        System.out.println(watch.getTime(TimeUnit.MILLISECONDS));
+        System.out.println(len / watch.getTime(TimeUnit.MILLISECONDS));
         System.out.println(set.size() / len);
+        long uid = MistUidGenerator.getUid();
+        System.out.println(uid);
     }
 
     @Test
-    public void t1(){
+    public void testFunc(){
         for (int i = 0; i < 10; i++) {
             System.out.println(MistUidGenerator.getUid());
         }
+    }
+
+    @Test
+    public void testSync() throws Exception{
+        ExecutorService service = Executors.newFixedThreadPool(10);
+        int loop = 100;
+        double len = loop;
+        StopWatch watch = new StopWatch();
+        watch.start();
+        while (loop-- > 0) {
+            service.submit(() -> {
+                long uid = MistUidGenerator.getUid();
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+        service.shutdown();
+        boolean awaitTermination = service.awaitTermination(20, TimeUnit.SECONDS);
+        watch.stop();
+        System.out.println(watch.getTime(TimeUnit.MILLISECONDS));
     }
 
 }

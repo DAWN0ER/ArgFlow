@@ -3,6 +3,7 @@ package com.example.springexample.example.service;
 import com.dawnyang.argflow.action.FlowActionEngine;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Service;
 
@@ -24,7 +25,7 @@ public class MyService implements InitializingBean {
     @Override
     public void afterPropertiesSet() throws Exception {
 //        engine.tell("myStrategy1");
-        StatusResult result = engine.execute("myStrategy2", "[TEST]");
+        StatusResult<JsonObject> result = engine.execute("myStrategy2", "[TEST]");
         System.out.println(new Gson().toJson(result));
     }
 }

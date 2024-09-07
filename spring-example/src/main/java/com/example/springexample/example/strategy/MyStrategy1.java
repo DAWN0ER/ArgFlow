@@ -33,7 +33,7 @@ public class MyStrategy1 extends BaseStrategy {
     }
 
     @Override
-    public Object integrateResult(Map<String, StatusResult> resultMap, String endHandler) {
+    public List<String> integrateResult(Map<String, StatusResult<?>> resultMap, String endHandler) {
         String[] order = handlerNameArrangement();
         List<String> arrayList = new ArrayList<>();
         for (String s : order) {
