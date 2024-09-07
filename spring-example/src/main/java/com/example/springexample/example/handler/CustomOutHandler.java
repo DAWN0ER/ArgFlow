@@ -10,18 +10,18 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
-public class MyHandler1 implements FlowHandler<String, String> {
+public class CustomOutHandler implements FlowHandler<String, String> {
     @Override
     public StatusResult<String> handler(String input) {
-        System.out.println("MyHandler1(H?Enum)=" + input);
+        System.out.println("CustomOutHandler(H?Enum)=" + input);
         int res = BaseHandlerStatusEnum.NEXT.getStatus();
         try {
             Status status = Status.valueOf(input);
             res = status.code;
         } catch (IllegalArgumentException e) {
-            return new StatusResult<>(res, "myHandler1="+input);
+            return new StatusResult<>(res, "CustomOutHandler="+input);
         }
-        return new StatusResult<>(res, "myHandler1="+input);
+        return new StatusResult<>(res, "CustomOutHandler="+input);
     }
 
     @Override

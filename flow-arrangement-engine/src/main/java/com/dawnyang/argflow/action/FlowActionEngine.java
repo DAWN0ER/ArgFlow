@@ -18,8 +18,8 @@ import com.dawnyang.argflow.domain.exception.task.TaskRecordException;
 import com.dawnyang.argflow.domain.exception.task.TaskRunningException;
 import com.dawnyang.argflow.domain.exception.task.TaskWaitException;
 import com.dawnyang.argflow.domain.task.TaskInfoDto;
-import com.dawnyang.argflow.domain.task.TaskWaitInfo;
-import com.dawnyang.argflow.domain.task.UnnaturalEndTaskInfo;
+import com.dawnyang.argflow.domain.task.WaitTaskInfo;
+import com.dawnyang.argflow.domain.task.AbortedTaskInfo;
 import com.dawnyang.argflow.utils.StrategyArrangementBuilder;
 import org.apache.commons.collections.MapUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -161,7 +161,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             // 默认编排
             if (BaseHandlerStatusEnum.WAIT.getStatus().equals(result.getStatus())) {
                 if (strategyNode.getHandler() instanceof EnableWait) {
-                    TaskWaitInfo waitInfo = new TaskWaitInfo();
+                    WaitTaskInfo waitInfo = new WaitTaskInfo();
                     waitInfo.setTaskId(taskInfo.getTaskId());
                     String waitHandler = strategyNodeArrangement.get(taskInfo.getCurrentNode()).getName();
                     waitInfo.setWaitHandler(waitHandler);
@@ -200,7 +200,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
     }
 
     private StatusResult processAbnormalResult(TaskInfoDto taskInfo, StatusResult<?> result, BaseStrategy strategy) {
-        UnnaturalEndTaskInfo endTaskInfo = new UnnaturalEndTaskInfo();
+        AbortedTaskInfo endTaskInfo = new AbortedTaskInfo();
         endTaskInfo.setTaskId(taskInfo.getTaskId());
         endTaskInfo.setResult(result);
         String endHandler = strategy.getNodeArrangement().get(taskInfo.getCurrentNode()).getName();

@@ -11,7 +11,7 @@ import lombok.Data;
  * @Since: 2024/09/06/18:58
  */
 @Data
-public class UnnaturalEndTaskInfo {
+public class AbortedTaskInfo {
 
     private Long taskId;
     private StatusResult result;

@@ -9,11 +9,11 @@ import org.springframework.stereotype.Service;
 import java.util.Set;
 
 @Service
-public class MyHandler2 implements FlowHandler<String, String>, EnableWait<String, String> {
+public class WaitHandler implements FlowHandler<String, String>, EnableWait<String, String> {
     @Override
     public StatusResult<String> handler(String input) {
-        System.out.println("MyHandler2(WAIT)" + input);
-        return new StatusResult<>(BaseHandlerStatusEnum.WAIT.getStatus(), "myHandler2-[WAIT]:" + input);
+        System.out.println("WaitHandler(WAIT)" + input);
+        return new StatusResult<>(BaseHandlerStatusEnum.WAIT.getStatus(), "WaitHandler-[WAIT]:" + input);
     }
 
     @Override
@@ -23,10 +23,10 @@ public class MyHandler2 implements FlowHandler<String, String>, EnableWait<Strin
 
     @Override
     public StatusResult<String> waitFor(String input) {
-        System.out.println("myHandler2 Awake!!!=" + input);
+        System.out.println("WaitHandler Awake!!!=" + input);
         if ("WAIT".equals(input)) {
-            return new StatusResult<>(BaseHandlerStatusEnum.WAIT.getStatus(), "myHandler2-WAIT TWICE:");
+            return new StatusResult<>(BaseHandlerStatusEnum.WAIT.getStatus(), "WaitHandler-WAIT TWICE:");
         }
-        return new StatusResult<>(BaseHandlerStatusEnum.NEXT.getStatus(), "myHandler2-[WAIT]:AWAKE=" + input);
+        return new StatusResult<>(BaseHandlerStatusEnum.NEXT.getStatus(), "WaitHandler-[WAIT]:AWAKE=" + input);
     }
 }

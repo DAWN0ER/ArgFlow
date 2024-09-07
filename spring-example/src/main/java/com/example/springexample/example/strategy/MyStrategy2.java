@@ -25,16 +25,16 @@ public class MyStrategy2 extends BaseStrategy implements TaskDurable {
     @Override
     public String[] handlerNameArrangement() {
         return new String[]{
-                "myHandler3",
-                "myHandler1"
+                "baseOutHandler",
+                "customOutHandler"
         };
     }
 
     @Override
     public NameSwitchers getSwitchers() {
         return SwitcherBuilder.newBuilder()
-                .addSwitcher("myHandler3", BaseHandlerStatusEnum.FAIL.getStatus(), NameSwitchers.END_FLOW)
-                .addSwitcher("myHandler3", BaseHandlerStatusEnum.EXCEPTION.getStatus(), "myHandler1")
+                .addSwitcher("baseOutHandler", BaseHandlerStatusEnum.FAIL.getStatus(), NameSwitchers.END_FLOW)
+                .addSwitcher("baseOutHandler", BaseHandlerStatusEnum.EXCEPTION.getStatus(), "customOutHandler")
                 .build();
     }
 

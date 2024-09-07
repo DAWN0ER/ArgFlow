@@ -10,7 +10,7 @@ import lombok.Data;
  * @Since: 2024/09/06/17:35
  */
 @Data
-public class TaskWaitInfo {
+public class WaitTaskInfo {
 
     private Long taskId;
     private String waitHandler;

@@ -3,9 +3,8 @@ package com.example.springexample.example.strategy;
 import com.dawnyang.argflow.api.BaseStrategy;
 import com.dawnyang.argflow.domain.base.NameSwitchers;
 import com.dawnyang.argflow.domain.base.StatusResult;
-import com.dawnyang.argflow.domain.enums.BaseHandlerStatusEnum;
 import com.dawnyang.argflow.utils.SwitcherBuilder;
-import com.example.springexample.example.handler.MyHandler1;
+import com.example.springexample.example.handler.CustomOutHandler;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -18,19 +17,19 @@ public class MyStrategy1 extends BaseStrategy {
     @Override
     public String[] handlerNameArrangement() {
         return new String[]{
-                "myHandler1",
-                "myHandler2",
-                "myHandler3"
+                "customOutHandler",
+                "waitHandler",
+                "baseOutHandler"
         };
     }
 
     @Override
     public NameSwitchers getSwitchers() {
         return SwitcherBuilder.newBuilder()
-                .addSwitcher("myHandler1", MyHandler1.Status.H3.code, "myHandler3")
-                .addSwitcher("myHandler1", MyHandler1.Status.H2.code, "myHandler2")
-                .addSwitcher("myHandler1", MyHandler1.Status.HE.code, NameSwitchers.END_FLOW)
-                .addSwitcher("myHandler2", BaseHandlerStatusEnum.WAIT.getStatus(), NameSwitchers.END_FLOW)
+                .addSwitcher("customOutHandler", CustomOutHandler.Status.H3.code, "baseOutHandler")
+                .addSwitcher("customOutHandler", CustomOutHandler.Status.H2.code, "waitHandler")
+                .addSwitcher("customOutHandler", CustomOutHandler.Status.HE.code, NameSwitchers.END_FLOW)
+//                .addSwitcher("waitHandler", BaseHandlerStatusEnum.WAIT.getStatus(), NameSwitchers.END_FLOW)
                 .build();
     }
 

@@ -15,19 +15,19 @@ import java.util.Set;
  * @Since: 2024/09/03/22:55
  */
 @Service
-public class MyHandler3 implements FlowHandler<String,String> {
+public class BaseOutHandler implements FlowHandler<String,String> {
 
     @Override
     public StatusResult<String> handler(String input) {
-        System.out.println("MyHandler3(Base)=" + input);
+        System.out.println("BaseOutHandler(Base)=" + input);
         int res = BaseHandlerStatusEnum.FAIL.getStatus();
         try {
             BaseHandlerStatusEnum anEnum = BaseHandlerStatusEnum.valueOf(input);
             res= anEnum.getStatus();
         } catch (IllegalArgumentException e) {
-            return new StatusResult<>(res, "myHandler3="+input);
+            return new StatusResult<>(res, "BaseOutHandler="+input);
         }
-        return new StatusResult<>(res, "myHandler3="+input);
+        return new StatusResult<>(res, "BaseOutHandler="+input);
     }
 
     @Override
