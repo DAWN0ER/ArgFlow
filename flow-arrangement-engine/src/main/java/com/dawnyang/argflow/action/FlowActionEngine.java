@@ -109,7 +109,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         recordTask(taskInfo, strategy);
         taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
         try {
-            return processSinceOrder(0,strategy,input,taskInfo);
+            return processSinceOrder(0, strategy, input, taskInfo);
         } catch (Exception e) {
             throw new TaskRunningException(strategyName, e);
         }
@@ -122,25 +122,31 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         }
     }
 
-    // TODO 各种判NULL都没有
-    public StatusResult awakeTask(Long taskId, String strategyName, Object input) {
+    // TODO 各种判NULL
+    public StatusResult awakeTask(Long taskId, String strategyName, Object input) throws TaskException {
         BaseStrategy strategy = strategyMap.get(strategyName);
-        // NULL
-        TaskInfoDto taskInfo = getTaskInfo(taskId, strategy);
+        if (Objects.isNull(strategy)) {
+            throw new TaskInitException(strategyName);
+        }
+        TaskInfoDto taskInfo = getTaskInfo(taskId, strategy, strategyName);
         Integer currentNode = taskInfo.getCurrentNode();
+        // TODO 检查记录是否完整匹配 包括 currentNode，taskId，taskStatus，resultMap
+
         StrategyNode strategyNode = strategy.getNodeArrangement().get(currentNode);
+        // TODO Handler 是否实现了 wait 接口，如果没有，也是记录损坏异常（要么 current node 错了， 要么服务迭代老流程坏掉了）
+        // TODO 流程灰度更新支持
 
         EnableWait handler = (EnableWait) strategyNode.getHandler();
         StatusResult result = handler.waitFor(input);
 
         taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
-        taskInfo.getResultMap().put(strategyNode.getName(),result);
-        recordTask(taskInfo,strategy);
+        taskInfo.getResultMap().put(strategyNode.getName(), result);
+        recordTask(taskInfo, strategy);
 
-        if (BaseHandlerStatusEnum.NEXT.getStatus().equals(result.getStatus())){
-            return processSinceOrder(currentNode+1,strategy,input,taskInfo);
+        if (BaseHandlerStatusEnum.NEXT.getStatus().equals(result.getStatus())) {
+            return processSinceOrder(currentNode + 1, strategy, input, taskInfo);
         }
-        if (BaseHandlerStatusEnum.WAIT.getStatus().equals(result.getStatus())){
+        if (BaseHandlerStatusEnum.WAIT.getStatus().equals(result.getStatus())) {
             throw new TaskWaitException(strategyNode.getName(), TaskWaitException.Reason.WAIT_TWICE);
         }
         // 自定义 switcher
@@ -155,10 +161,10 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
                 return new StatusResult<>(TaskStatusEnum.FINISHED.getCode(), resultIntegration);
             }
             if (Objects.nonNull(target) && target > currentNode) {
-                return processSinceOrder(target,strategy,input,taskInfo);
+                return processSinceOrder(target, strategy, input, taskInfo);
             }
         }
-        return processAbnormalResult(taskInfo,result,strategy);
+        return processAbnormalResult(taskInfo, result, strategy);
     }
 
     private StatusResult processSinceOrder(int order, BaseStrategy strategy, Object input, TaskInfoDto taskInfo) throws TaskException {
@@ -235,20 +241,34 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
     private void recordTask(TaskInfoDto taskInfo, BaseStrategy strategy) throws TaskRecordException {
         lruCache.record(taskInfo);
         if (strategy instanceof TaskDurable) {
-            if (!((TaskDurable) strategy).recordTaskInfo(taskInfo)) {
-                throw new TaskRecordException(taskInfo.getTaskId(), taskInfo.getStrategyName());
+            boolean success = false;
+            try {
+                success = ((TaskDurable) strategy).recordTaskInfo(taskInfo);
+            } catch (Exception e) {
+                throw new TaskRecordException(taskInfo.getTaskId(), taskInfo.getStrategyName(), e);
+            }
+            if (!success) {
+                throw new TaskRecordException(taskInfo.getTaskId(), taskInfo.getStrategyName(), TaskRecordException.Reason.RECORD_ERROR);
             }
         }
     }
 
-    private TaskInfoDto getTaskInfo(Long taskId, BaseStrategy strategy){
-        TaskInfoDto task = lruCache.getTask(taskId);
-        if(Objects.nonNull(task)){
-            return task;
+    private TaskInfoDto getTaskInfo(Long taskId, BaseStrategy strategy, String strategyName) {
+        TaskInfoDto taskInfo = null;
+        taskInfo = lruCache.getTask(taskId);
+        if (Objects.nonNull(taskInfo)) {
+            return taskInfo;
         }
         if (strategy instanceof TaskDurable) {
-            return  ((TaskDurable) strategy).getTaskInfo(taskId);
+            try {
+                taskInfo = ((TaskDurable) strategy).getTaskInfo(taskId);
+            } catch (Exception e) {
+                throw new TaskRecordException(taskId, strategyName, e);
+            }
         }
-        return null;
+        if (Objects.isNull(taskInfo)) {
+            throw new TaskRecordException(taskId, strategyName, TaskRecordException.Reason.GET_ERROR);
+        }
+        return taskInfo;
     }
 }
