@@ -1,5 +1,6 @@
 package com.dawnyang.argflow.test;
 
+import com.dawnyang.argflow.api.UidGenerator;
 import com.dawnyang.argflow.utils.MistUidGenerator;
 import org.apache.commons.lang3.time.StopWatch;
 import org.junit.Test;
@@ -21,6 +22,8 @@ import java.util.concurrent.TimeUnit;
 
 public class MistTest {
 
+    private UidGenerator generator = MistUidGenerator.getInstance();
+
     @Test
     public void testDuplicate() throws Exception {
         ExecutorService service = Executors.newFixedThreadPool(10);
@@ -31,7 +34,7 @@ public class MistTest {
         watch.start();
         while (loop-- > 0) {
             service.submit(() -> {
-                long uid = MistUidGenerator.getUid();
+                long uid = generator.getUid();
                 if(set.contains(uid)){
                     System.out.println(uid);
                 }
@@ -44,14 +47,14 @@ public class MistTest {
         System.out.println(watch.getTime(TimeUnit.MILLISECONDS));
         System.out.println(len / watch.getTime(TimeUnit.MILLISECONDS));
         System.out.println(set.size() / len);
-        long uid = MistUidGenerator.getUid();
+        long uid = generator.getUid();
         System.out.println(uid);
     }
 
     @Test
     public void testFunc(){
         for (int i = 0; i < 10; i++) {
-            System.out.println(MistUidGenerator.getUid());
+            System.out.println(generator.getUid());
         }
     }
 
@@ -64,7 +67,7 @@ public class MistTest {
         watch.start();
         while (loop-- > 0) {
             service.submit(() -> {
-                long uid = MistUidGenerator.getUid();
+                long uid = generator.getUid();
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {

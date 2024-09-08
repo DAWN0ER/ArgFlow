@@ -8,7 +8,7 @@ import com.dawnyang.argflow.domain.task.WaitTaskInfo;
 /**
  * Created with IntelliJ IDEA.
  *
- * @Description:
+ * @Description: 流程结果解析工具
  * @Auther: Dawn Yang
  * @Since: 2024/09/07/22:21
  */

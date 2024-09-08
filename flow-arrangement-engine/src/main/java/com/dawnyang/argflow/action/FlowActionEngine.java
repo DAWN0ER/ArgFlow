@@ -1,9 +1,6 @@
 package com.dawnyang.argflow.action;
 
-import com.dawnyang.argflow.api.BaseStrategy;
-import com.dawnyang.argflow.api.EnableWait;
-import com.dawnyang.argflow.api.FlowHandler;
-import com.dawnyang.argflow.api.TaskDurable;
+import com.dawnyang.argflow.api.*;
 import com.dawnyang.argflow.domain.base.NameSwitchers;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.base.StrategyNode;
@@ -41,16 +38,28 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
     private int cacheCapacity = 100;
     private LRUCache lruCache;
     private Map<String, BaseStrategy> strategyMap;
+    private UidGenerator uidGenerator;
 
     private ApplicationContext springContext;
 
-    /** 工厂支持方法 **/
-    public void initCacheCapacity(int capacity) {
+    /**
+     * 工厂支持方法
+     **/
+    protected void initCacheCapacity(int capacity) {
         if (MapUtils.isEmpty(lruCache)) {
             this.cacheCapacity = capacity;
         }
     }
 
+    protected void initUidGenerator(UidGenerator uidGenerator) {
+        if (Objects.isNull(this.uidGenerator)) {
+            this.uidGenerator = uidGenerator;
+        }
+    }
+
+    /**
+     * Spring 容器初始化策略 Bean 和处理器 Bean
+     **/
     public void setApplicationContext(ApplicationContext applicationContext) {
         this.springContext = applicationContext;
     }
@@ -95,9 +104,16 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         if (Objects.isNull(strategy)) {
             throw new TaskInitException(strategyName);
         }
-        TaskInfoDto taskInfo = new TaskInfoDto(strategyName);
+        // 支持自定义 UID 生成算法，初始化任务
+        TaskInfoDto taskInfo;
+        if (Objects.nonNull(this.uidGenerator)) {
+            taskInfo = new TaskInfoDto(strategyName, this.uidGenerator);
+        } else {
+            taskInfo = new TaskInfoDto(strategyName);
+        }
         recordTask(taskInfo, strategy);
         taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
+        // 执行任务
         try {
             return processSinceOrder(0, strategy, input, taskInfo);
         } catch (Exception e) {
@@ -105,48 +121,50 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         }
     }
 
-    // TODO 各种判NULL
-    // TODO 流程灰度更新支
     public <T> StatusResult<T> awakeTask(Long taskId, String strategyName, Object input) throws TaskException {
         BaseStrategy strategy = strategyMap.get(strategyName);
         if (Objects.isNull(strategy)) {
             throw new TaskInitException(strategyName);
         }
         TaskInfoDto taskInfo = getTaskInfo(taskId, strategy, strategyName);
-        if (!verifyTaskInfo(taskInfo,taskId,strategyName,strategy)){
-            throw new TaskRecordException(taskId,strategyName, TaskRecordException.Reason.CORRUPTED);
+        if (!verifyTaskInfo(taskInfo, taskId, strategyName, strategy)) {
+            throw new TaskRecordException(taskId, strategyName, TaskRecordException.Reason.CORRUPTED);
         }
         Integer currentNode = taskInfo.getCurrentNode();
         StrategyNode strategyNode = strategy.getNodeArrangement().get(currentNode);
 
-        EnableWait<Object,Object> handler = (EnableWait) strategyNode.getHandler();
-        StatusResult<?> result = handler.waitFor(input);
-        taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
-        taskInfo.getResultMap().put(strategyNode.getName(), result);
-        recordTask(taskInfo, strategy);
+        try {
+            EnableWait<Object, Object> handler = (EnableWait) strategyNode.getHandler();
+            StatusResult<?> result = handler.waitFor(input);
+            taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
+            taskInfo.getResultMap().put(strategyNode.getName(), result);
+            recordTask(taskInfo, strategy);
 
-        if (BaseHandlerStatusEnum.NEXT.getStatus().equals(result.getStatus())) {
-            return processSinceOrder(currentNode + 1, strategy, input, taskInfo);
-        }
-        if (BaseHandlerStatusEnum.WAIT.getStatus().equals(result.getStatus())) {
-            throw new TaskWaitException(strategyNode.getName(), TaskWaitException.Reason.WAIT_TWICE);
-        }
-        // 自定义 switcher
-        HashMap<Integer, Integer> switcher = strategyNode.getSwitcher();
-        if (MapUtils.isNotEmpty(switcher)) {
-            Integer target = switcher.get(result.getStatus());
-            if (Objects.equals(target, -1)) {
-                Object resultIntegration = strategy.integrateResult(taskInfo.getResultMap(), strategyNode.getName());
-                taskInfo.setTaskStatus(TaskStatusEnum.FINISHED.getCode());
-                taskInfo.setResultIntegration(resultIntegration);
-                recordTask(taskInfo, strategy);
-                return new StatusResult<T>(TaskStatusEnum.FINISHED.getCode(), (T) resultIntegration);
+            if (BaseHandlerStatusEnum.NEXT.getStatus().equals(result.getStatus())) {
+                return processSinceOrder(currentNode + 1, strategy, input, taskInfo);
             }
-            if (Objects.nonNull(target) && target > currentNode) {
-                return processSinceOrder(target, strategy, input, taskInfo);
+            if (BaseHandlerStatusEnum.WAIT.getStatus().equals(result.getStatus())) {
+                throw new TaskWaitException(strategyNode.getName(), TaskWaitException.Reason.WAIT_TWICE);
             }
+            // 自定义 switcher
+            HashMap<Integer, Integer> switcher = strategyNode.getSwitcher();
+            if (MapUtils.isNotEmpty(switcher)) {
+                Integer target = switcher.get(result.getStatus());
+                if (Objects.equals(target, -1)) {
+                    Object resultIntegration = strategy.integrateResult(taskInfo.getResultMap(), strategyNode.getName());
+                    taskInfo.setTaskStatus(TaskStatusEnum.FINISHED.getCode());
+                    taskInfo.setResultIntegration(resultIntegration);
+                    recordTask(taskInfo, strategy);
+                    return new StatusResult<T>(TaskStatusEnum.FINISHED.getCode(), (T) resultIntegration);
+                }
+                if (Objects.nonNull(target) && target > currentNode) {
+                    return processSinceOrder(target, strategy, input, taskInfo);
+                }
+            }
+            return processAbnormalResult(taskInfo, result, strategy);
+        } catch (Exception e) {
+            throw new TaskRunningException(strategyName, e);
         }
-        return processAbnormalResult(taskInfo, result, strategy);
     }
 
     private StatusResult processSinceOrder(int order, BaseStrategy strategy, Object input, TaskInfoDto taskInfo) throws TaskException {
@@ -273,7 +291,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         ) {
             return false;
         }
-        if(MapUtils.isEmpty(taskInfo.getResultMap())){
+        if (MapUtils.isEmpty(taskInfo.getResultMap())) {
             return false;
         }
         StrategyNode strategyNode = strategy.getNodeArrangement().get(taskInfo.getCurrentNode());

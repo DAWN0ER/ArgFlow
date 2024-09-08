@@ -1,5 +1,6 @@
 package com.dawnyang.argflow.domain.task;
 
+import com.dawnyang.argflow.api.UidGenerator;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.enums.TaskStatusEnum;
 import com.dawnyang.argflow.utils.MistUidGenerator;
@@ -28,13 +29,14 @@ public class TaskInfoDto {
     private Object resultIntegration;
 
     public TaskInfoDto(String strategyName){
-        this.taskId = MistUidGenerator.getUid();
+        this(strategyName,MistUidGenerator.getInstance());
+    }
+
+    public TaskInfoDto(String strategyName, UidGenerator uidGenerator){
+        this.taskId = uidGenerator.getUid();
         this.taskStatus = TaskStatusEnum.INIT.getCode();
         this.strategyName = strategyName;
         this.resultMap = new HashMap<>();
     }
 
-    public void setCurrentNode(Integer currentNode) {
-        this.currentNode = currentNode;
-    }
 }

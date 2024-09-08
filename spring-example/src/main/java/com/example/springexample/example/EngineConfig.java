@@ -1,7 +1,7 @@
 package com.example.springexample.example;
 
 import com.dawnyang.argflow.action.FlowActionEngine;
-import com.dawnyang.argflow.utils.FlowEngineFactory;
+import com.dawnyang.argflow.action.FlowEngineFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
