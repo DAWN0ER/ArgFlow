@@ -11,9 +11,9 @@ import java.util.Set;
  * @Auther: Dawn Yang
  * @Since: 2024/09/03/20:26
  */
-public interface FlowHandler<INPUT, OUTPUT> {
+public interface FlowHandler<CONTEXT, OUTPUT> {
 
-    StatusResult<OUTPUT> handler(INPUT input);
+    StatusResult<OUTPUT> handler(CONTEXT context);
 
     Set<Integer> customStatus();
 

@@ -9,8 +9,8 @@ import com.dawnyang.argflow.domain.base.StatusResult;
  * @Auther: Dawn Yang
  * @Since: 2024/09/06/12:05
  */
-public interface EnableWait<INPUT, OUTPUT> {
+public interface EnableWait<CONTEXT, OUTPUT> {
 
-    StatusResult<OUTPUT> waitFor(INPUT input);
+    StatusResult<OUTPUT> waitFor(CONTEXT context);
 
 }
