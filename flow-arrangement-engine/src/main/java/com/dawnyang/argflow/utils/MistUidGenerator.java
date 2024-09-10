@@ -17,7 +17,7 @@ public class MistUidGenerator implements UidGenerator {
 
     private final long START = 1704038400000L; //2024-01-01 00:00:00
     private final AtomicLong inc = new AtomicLong(System.currentTimeMillis() - START);
-    private static UidGenerator instance;
+    private volatile static UidGenerator instance;
 
     private MistUidGenerator() {}
 
