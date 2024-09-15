@@ -35,7 +35,7 @@ public class MyStrategy1 extends BaseStrategy {
 
     @Override
     public List<String> integrateResult(Map<String, StatusResult> resultMap, String endHandler) {
-        System.out.println("integrateResult!");
+        System.out.println("[MyStrategy1]:integrateResult!, endHandler=" + endHandler);
         String[] order = handlerNameArrangement();
         List<String> arrayList = new ArrayList<>();
         for (String s : order) {
