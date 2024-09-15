@@ -71,7 +71,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             return;
         }
         Map<String, BaseStrategy> strategyBeanMap = springContext.getBeansOfType(BaseStrategy.class, false, true);
-        if (strategyBeanMap.isEmpty()) {
+        if (MapUtils.isEmpty(strategyBeanMap)) {
             this.strategyMap = Collections.emptyMap();
             return;
         }
