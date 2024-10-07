@@ -1,6 +1,6 @@
 package com.example.springexample.test;
 
-import com.dawnyang.argflow.action.FlowActionEngine;
+import com.dawnyang.argflow.action.FlowEngine;
 import com.dawnyang.argflow.domain.base.StatusResult;
 import com.dawnyang.argflow.domain.task.AbortedTaskInfo;
 import com.dawnyang.argflow.domain.task.WaitTaskInfo;
@@ -23,7 +23,7 @@ import java.util.List;
 public class EngineTest extends SpringExampleApplicationTests {
 
     @Resource
-    private FlowActionEngine engine;
+    private FlowEngine engine;
 
     private Gson gson = new Gson();
 

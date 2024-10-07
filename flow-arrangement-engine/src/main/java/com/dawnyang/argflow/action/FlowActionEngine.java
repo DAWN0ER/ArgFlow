@@ -14,9 +14,10 @@ import com.dawnyang.argflow.domain.exception.task.TaskInitException;
 import com.dawnyang.argflow.domain.exception.task.TaskRecordException;
 import com.dawnyang.argflow.domain.exception.task.TaskRunningException;
 import com.dawnyang.argflow.domain.exception.task.TaskWaitException;
+import com.dawnyang.argflow.domain.task.AbortedTaskInfo;
 import com.dawnyang.argflow.domain.task.TaskInfoDto;
 import com.dawnyang.argflow.domain.task.WaitTaskInfo;
-import com.dawnyang.argflow.domain.task.AbortedTaskInfo;
+import com.dawnyang.argflow.utils.MistUidGenerator;
 import com.dawnyang.argflow.utils.StrategyArrangementBuilder;
 import org.apache.commons.collections.MapUtils;
 import org.springframework.beans.factory.InitializingBean;
@@ -33,7 +34,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @Auther: Dawn Yang
  * @Since: 2024/09/03/20:26
  */
-public class FlowActionEngine implements InitializingBean, ApplicationContextAware {
+public class FlowActionEngine implements FlowEngine, InitializingBean, ApplicationContextAware {
 
     private int cacheCapacity = 100;
     private LRUCache lruCache;
@@ -65,18 +66,22 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
     }
 
     public void afterPropertiesSet() {
-        Map<String, FlowHandler> handlerBeans = springContext.getBeansOfType(FlowHandler.class, false, true);
-        if (MapUtils.isEmpty(handlerBeans)) {
-            new NoHandlerException().printStackTrace();
-            return;
-        }
         Map<String, BaseStrategy> strategyBeanMap = springContext.getBeansOfType(BaseStrategy.class, false, true);
         if (MapUtils.isEmpty(strategyBeanMap)) {
             this.strategyMap = Collections.emptyMap();
             return;
         }
+        Map<String, FlowHandler> handlerBeans = springContext.getBeansOfType(FlowHandler.class, false, true);
+        if (MapUtils.isEmpty(handlerBeans)) {
+            new NoHandlerException().printStackTrace();
+            return;
+        }
         // 初始化 Cache
         this.lruCache = new LRUCache(cacheCapacity);
+        // 初始化 UidGenerator
+        if (Objects.isNull(this.uidGenerator)){
+            this.uidGenerator = MistUidGenerator.getInstance();
+        }
         // 初始化所有策略
         this.strategyMap = new ConcurrentHashMap<>();
         strategyBeanMap.forEach((name, strategy) -> {
@@ -104,14 +109,10 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         if (Objects.isNull(strategy)) {
             throw new TaskInitException(strategyName);
         }
-        // 支持自定义 UID 生成算法，初始化任务
-        TaskInfoDto taskInfo;
-        if (Objects.nonNull(this.uidGenerator)) {
-            taskInfo = new TaskInfoDto(strategyName, this.uidGenerator);
-        } else {
-            taskInfo = new TaskInfoDto(strategyName);
-        }
-        recordTask(taskInfo, strategy);
+
+        TaskInfoDto taskInfo = new TaskInfoDto(strategyName, this.uidGenerator);
+        recordTaskInfo(taskInfo, strategy);
+
         taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
         // 执行任务
         try {
@@ -127,7 +128,8 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             throw new TaskInitException(strategyName);
         }
         TaskInfoDto taskInfo = getTaskInfo(taskId, strategy, strategyName);
-        if (!verifyTaskInfo(taskInfo, taskId, strategyName, strategy)) {
+        if (!verifyTaskIsAwake(taskInfo, taskId, strategyName, strategy)) {
+
             throw new TaskRecordException(taskId, strategyName, TaskRecordException.Reason.CORRUPTED);
         }
         Integer currentNode = taskInfo.getCurrentNode();
@@ -138,7 +140,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             StatusResult<?> result = handler.waitFor(input);
             taskInfo.setTaskStatus(TaskStatusEnum.RUNNING.getCode());
             taskInfo.getResultMap().put(strategyNode.getName(), result);
-            recordTask(taskInfo, strategy);
+            recordTaskInfo(taskInfo, strategy);
 
             if (BaseHandlerStatusEnum.NEXT.getStatus().equals(result.getStatus())) {
                 return processSinceOrder(currentNode + 1, strategy, input, taskInfo);
@@ -154,7 +156,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
                     Object resultIntegration = strategy.integrateResult(taskInfo.getResultMap(), strategyNode.getName());
                     taskInfo.setTaskStatus(TaskStatusEnum.FINISHED.getCode());
                     taskInfo.setResultIntegration(resultIntegration);
-                    recordTask(taskInfo, strategy);
+                    recordTaskInfo(taskInfo, strategy);
                     return new StatusResult<T>(TaskStatusEnum.FINISHED.getCode(), (T) resultIntegration);
                 }
                 if (Objects.nonNull(target) && target > currentNode) {
@@ -174,7 +176,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
             taskInfo.setCurrentNode(order);
             StatusResult result = strategyNode.getHandler().handler(input);
             taskInfo.getResultMap().put(strategyNode.getName(), result);
-            recordTask(taskInfo, strategy);
+            recordTaskInfo(taskInfo, strategy);
 
             // 默认编排
             if (BaseHandlerStatusEnum.WAIT.getStatus().equals(result.getStatus())) {
@@ -213,7 +215,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         Object resultIntegration = strategy.integrateResult(taskInfo.getResultMap(), endHandler);
         taskInfo.setTaskStatus(TaskStatusEnum.FINISHED.getCode());
         taskInfo.setResultIntegration(resultIntegration);
-        recordTask(taskInfo, strategy);
+        recordTaskInfo(taskInfo, strategy);
         return new StatusResult<>(TaskStatusEnum.FINISHED.getCode(), resultIntegration);
     }
 
@@ -225,20 +227,20 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         endTaskInfo.setAbnormalHandler(endHandler);
         if (BaseHandlerStatusEnum.EXCEPTION.getStatus().equals(result.getStatus())) {
             taskInfo.setTaskStatus(TaskStatusEnum.EXCEPTION.getCode());
-            recordTask(taskInfo, strategy);
+            recordTaskInfo(taskInfo, strategy);
             return new StatusResult<>(TaskStatusEnum.EXCEPTION.getCode(), endTaskInfo);
         }
         if (BaseHandlerStatusEnum.FAIL.getStatus().equals(result.getStatus())) {
             taskInfo.setTaskStatus(TaskStatusEnum.FAIL.getCode());
-            recordTask(taskInfo, strategy);
+            recordTaskInfo(taskInfo, strategy);
             return new StatusResult<>(TaskStatusEnum.FAIL.getCode(), endTaskInfo);
         }
         taskInfo.setTaskStatus(TaskStatusEnum.UNEXPECTED_STATUS.getCode());
-        recordTask(taskInfo, strategy);
+        recordTaskInfo(taskInfo, strategy);
         return new StatusResult<>(TaskStatusEnum.UNEXPECTED_STATUS.getCode(), endTaskInfo);
     }
 
-    private void recordTask(TaskInfoDto taskInfo, BaseStrategy strategy) throws TaskRecordException {
+    private void recordTaskInfo(TaskInfoDto taskInfo, BaseStrategy strategy) throws TaskRecordException {
         lruCache.record(taskInfo);
         if (strategy instanceof TaskDurable) {
             boolean success = false;
@@ -253,7 +255,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         }
     }
 
-    private TaskInfoDto getTaskInfo(Long taskId, BaseStrategy strategy, String strategyName) {
+    private TaskInfoDto getTaskInfo(Long taskId, BaseStrategy strategy, String strategyName) throws TaskRecordException {
         TaskInfoDto taskInfo = null;
         taskInfo = lruCache.getTask(taskId);
         if (Objects.nonNull(taskInfo)) {
@@ -272,7 +274,7 @@ public class FlowActionEngine implements InitializingBean, ApplicationContextAwa
         return taskInfo;
     }
 
-    private boolean verifyTaskInfo(TaskInfoDto taskInfo, Long taskId, String strategyName, BaseStrategy strategy) {
+    private boolean verifyTaskIsAwake(TaskInfoDto taskInfo, Long taskId, String strategyName, BaseStrategy strategy) {
         if (Objects.isNull(taskInfo)) {
             return false;
         }

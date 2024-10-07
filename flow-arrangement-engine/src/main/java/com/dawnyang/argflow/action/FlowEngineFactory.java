@@ -9,12 +9,12 @@ package com.dawnyang.argflow.action;
  */
 public class FlowEngineFactory {
 
-    public static FlowActionEngine generate(){
+    public static FlowEngine generate(){
         FlowActionEngine engine = new FlowActionEngine();
         return engine;
     }
 
-    public static FlowActionEngine generate(int capacity){
+    public static FlowEngine generate(int capacity){
         FlowActionEngine engine = new FlowActionEngine();
         engine.initCacheCapacity(capacity);
         return engine;

@@ -1,7 +1,6 @@
 package com.example.springexample.example.service;
 
 import com.dawnyang.argflow.action.FlowActionEngine;
-import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 
@@ -12,11 +11,11 @@ import javax.annotation.Resource;
  * @Auther: Dawn Yang
  * @Since: 2024/09/03/20:26
  */
-@Service
+@Deprecated
+//@Service
 public class MyService {
 
     @Resource
     private FlowActionEngine engine;
-
 
 }
